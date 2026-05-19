@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard de Automacao - Projetos com Koins</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <svg aria-hidden="true" class="sprite">
+      <symbol id="icon-dashboard" viewBox="0 0 24 24">
+        <path d="M4 5h7v6H4zM13 5h7v3h-7zM13 10h7v9h-7zM4 13h7v6H4z" />
+      </symbol>
+      <symbol id="icon-site" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
+      </symbol>
+      <symbol id="icon-social" viewBox="0 0 24 24">
+        <circle cx="7" cy="12" r="3" />
+        <circle cx="17" cy="7" r="3" />
+        <circle cx="17" cy="17" r="3" />
+        <path d="m9.6 10.5 4.8-2M9.6 13.5l4.8 2" />
+      </symbol>
+      <symbol id="icon-automation" viewBox="0 0 24 24">
+        <path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" />
+        <path d="M18 4v4h-4M6 20v-4h4" />
+      </symbol>
+      <symbol id="icon-content" viewBox="0 0 24 24">
+        <path d="M5 4h14v16H5z" />
+        <path d="M8 8h8M8 12h8M8 16h5" />
+      </symbol>
+      <symbol id="icon-coin" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="7" rx="7" ry="3" />
+        <path d="M5 7v10c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3" />
+      </symbol>
+      <symbol id="icon-approval" viewBox="0 0 24 24">
+        <path d="M4 12.5 9 17 20 6" />
+      </symbol>
+      <symbol id="icon-report" viewBox="0 0 24 24">
+        <path d="M5 19V5M5 19h15M9 16v-5M13 16V8M17 16v-7" />
+      </symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19 12a7.5 7.5 0 0 0-.1-1l2-1.6-2-3.5-2.4 1a7 7 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.6c.1-.3.1-.7.1-1Z" />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="M8 5v14l11-7z" />
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24">
+        <path d="M12 4v10M8 10l4 4 4-4M5 20h14" />
+      </symbol>
+      <symbol id="icon-upload" viewBox="0 0 24 24">
+        <path d="M12 20V10M8 14l4-4 4 4M5 4h14" />
+      </symbol>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">K</div>
+          <div>
+            <p class="eyebrow">Operacao</p>
+            <h1>KoinOps</h1>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Navegacao principal">
+          <button class="nav-item active" data-view="overview" title="Visao geral">
+            <svg><use href="#icon-dashboard"></use></svg><span>Visao geral</span>
+          </button>
+          <button class="nav-item" data-view="sites" title="Sites">
+            <svg><use href="#icon-site"></use></svg><span>Sites</span>
+          </button>
+          <button class="nav-item" data-view="social" title="Redes sociais">
+            <svg><use href="#icon-social"></use></svg><span>Redes</span>
+          </button>
+          <button class="nav-item" data-view="automations" title="Automacoes">
+            <svg><use href="#icon-automation"></use></svg><span>Automacoes</span>
+          </button>
+          <button class="nav-item" data-view="content" title="Conteudo">
+            <svg><use href="#icon-content"></use></svg><span>Conteudo</span>
+          </button>
+          <button class="nav-item" data-view="koins" title="Koins e premios">
+            <svg><use href="#icon-coin"></use></svg><span>Koins</span>
+          </button>
+          <button class="nav-item" data-view="approvals" title="Aprovacoes">
+            <svg><use href="#icon-approval"></use></svg><span>Aprovacoes</span>
+          </button>
+          <button class="nav-item" data-view="reports" title="Relatorios">
+            <svg><use href="#icon-report"></use></svg><span>Relatorios</span>
+          </button>
+          <button class="nav-item" data-view="settings" title="Governanca">
+            <svg><use href="#icon-settings"></use></svg><span>Governanca</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-note">
+          <p class="eyebrow">Regra central</p>
+          <p>Senhas ficam no cofre. O dashboard guarda referencia, status e permissao.</p>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Dashboard mestre</p>
+            <h2 id="viewTitle">Visao geral</h2>
+          </div>
+          <div class="topbar-tools">
+            <label class="field search-field">
+              <span>Buscar</span>
+              <input id="searchInput" type="search" placeholder="site, canal, premio..." />
+            </label>
+            <label class="field">
+              <span>Projeto</span>
+              <select id="siteFilter"></select>
+            </label>
+            <button class="icon-btn" id="runAuditBtn" title="Rodar auditoria simulada">
+              <svg><use href="#icon-play"></use></svg>
+            </button>
+            <button class="icon-btn" id="exportBtn" title="Exportar JSON">
+              <svg><use href="#icon-download"></use></svg>
+            </button>
+            <button class="icon-btn" id="importBtn" title="Importar JSON">
+              <svg><use href="#icon-upload"></use></svg>
+            </button>
+            <input id="importFile" class="visually-hidden" type="file" accept="application/json" />
+          </div>
+        </header>
+
+        <section id="overview" class="view active" aria-labelledby="overview-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Centro de controle</p>
+              <h3 id="overview-title">Saude da operacao</h3>
+            </div>
+            <button class="primary-btn" id="addSiteQuickBtn">
+              <svg><use href="#icon-plus"></use></svg><span>Novo site</span>
+            </button>
+          </div>
+          <div id="kpiGrid" class="kpi-grid"></div>
+          <div class="overview-grid">
+            <div class="panel">
+              <div class="panel-head">
+                <h4>Proximas acoes</h4>
+                <span class="muted">Prioridade operacional</span>
+              </div>
+              <div id="nextActions" class="action-list"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h4>Funil Koins</h4>
+                <span class="muted">Ultimos 7 dias</span>
+              </div>
+              <div id="funnelChart" class="bar-chart"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="sites" class="view" aria-labelledby="sites-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Inventario</p>
+              <h3 id="sites-title">Sites e acessos tecnicos</h3>
+            </div>
+          </div>
+          <form id="siteForm" class="form-grid panel" autocomplete="off">
+            <label class="field"><span>Nome</span><input name="name" required placeholder="Koin Research" /></label>
+            <label class="field"><span>URL</span><input name="url" required placeholder="https://..." /></label>
+            <label class="field"><span>Plataforma</span><input name="platform" required placeholder="WordPress, Webflow..." /></label>
+            <label class="field"><span>Objetivo</span><input name="objective" required placeholder="Captar usuarios" /></label>
+            <label class="field"><span>Cofre</span><input name="vault" required placeholder="Bitwarden: Site Admin" /></label>
+            <button class="primary-btn form-submit" type="submit">
+              <svg><use href="#icon-plus"></use></svg><span>Adicionar</span>
+            </button>
+          </form>
+          <div id="sitesTable" class="data-table"></div>
+        </section>
+
+        <section id="social" class="view" aria-labelledby="social-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Distribuicao</p>
+              <h3 id="social-title">Redes sociais e cadencia</h3>
+            </div>
+          </div>
+          <div id="socialGrid" class="matrix-grid"></div>
+        </section>
+
+        <section id="automations" class="view" aria-labelledby="automations-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Rotinas</p>
+              <h3 id="automations-title">Automacoes recorrentes</h3>
+            </div>
+          </div>
+          <div id="automationTable" class="data-table"></div>
+        </section>
+
+        <section id="content" class="view" aria-labelledby="content-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Esteira editorial</p>
+              <h3 id="content-title">Conteudo, SEO e publicacao</h3>
+            </div>
+          </div>
+          <div id="contentBoard" class="kanban"></div>
+        </section>
+
+        <section id="koins" class="view" aria-labelledby="koins-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Economia interna</p>
+              <h3 id="koins-title">Koins, premios e alertas</h3>
+            </div>
+          </div>
+          <div id="coinStats" class="kpi-grid"></div>
+          <div id="prizeTable" class="data-table"></div>
+        </section>
+
+        <section id="approvals" class="view" aria-labelledby="approvals-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Travas humanas</p>
+              <h3 id="approvals-title">Fila de aprovacao</h3>
+            </div>
+          </div>
+          <div id="approvalList" class="approval-list"></div>
+        </section>
+
+        <section id="reports" class="view" aria-labelledby="reports-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Analise</p>
+              <h3 id="reports-title">Relatorios e crescimento</h3>
+            </div>
+          </div>
+          <div class="reports-grid">
+            <div class="panel">
+              <div class="panel-head">
+                <h4>Traction semanal</h4>
+                <span class="muted">Trafego, posts, cadastros</span>
+              </div>
+              <div id="tractionChart" class="line-bars"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h4>Resumo executivo</h4>
+                <span class="muted" id="lastAuditLabel"></span>
+              </div>
+              <div id="executiveSummary" class="summary-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings" class="view" aria-labelledby="settings-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Governanca</p>
+              <h3 id="settings-title">Regras, cofre e limites</h3>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <div class="panel">
+              <div class="panel-head">
+                <h4>Politicas de automacao</h4>
+                <span class="muted">O que pode ou nao rodar sozinho</span>
+              </div>
+              <div id="rulesList" class="rule-list"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h4>Referencias de cofre</h4>
+                <span class="muted">Sem senhas em texto aberto</span>
+              </div>
+              <div id="vaultList" class="vault-list"></div>
+            </div>
+          </div>
+          <button class="secondary-btn" id="resetBtn">Restaurar dados de exemplo</button>
+        </section>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

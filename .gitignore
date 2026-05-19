@@ -1,0 +1,5 @@
+render_plano_automatizacao/
+~$*.docx
+.vercel/
+.DS_Store
+Thumbs.db
