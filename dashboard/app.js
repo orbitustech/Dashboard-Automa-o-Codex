@@ -1,133 +1,26 @@
 const STORAGE_KEY = "koinops-dashboard-v1";
 
 const seedData = {
-  sites: [
-    {
-      id: "koin-research",
-      name: "Koin Research",
-      url: "https://koinresearch.example",
-      platform: "WordPress",
-      objective: "Captar usuarios para pesquisas",
-      audience: "Usuarios que querem ganhar premios",
-      status: "online",
-      trustScore: 84,
-      uptime: 99.92,
-      vault: "Bitwarden: Koin Research Admin",
-      api: "WordPress REST",
-      lastAudit: "2026-05-19",
-      nextAction: "Criar pagina de transparencia dos premios"
-    },
-    {
-      id: "koin-partners",
-      name: "Koin Partners",
-      url: "https://partners.example",
-      platform: "Webflow",
-      objective: "Atrair marcas para contratar pesquisas",
-      audience: "Empresas e agencias",
-      status: "atencao",
-      trustScore: 76,
-      uptime: 99.71,
-      vault: "1Password: Partners Webflow",
-      api: "Webflow API",
-      lastAudit: "2026-05-18",
-      nextAction: "Adicionar estudo de caso para parceiros"
-    },
-    {
-      id: "premios-zone",
-      name: "Premios Zone",
-      url: "https://premioszone.example",
-      platform: "Shopify",
-      objective: "Catalogo de premios para resgate",
-      audience: "Usuarios com saldo de Koins",
-      status: "online",
-      trustScore: 88,
-      uptime: 99.98,
-      vault: "Bitwarden: Premios Shopify",
-      api: "Shopify Admin API",
-      lastAudit: "2026-05-19",
-      nextAction: "Configurar alerta de estoque baixo"
-    },
-    {
-      id: "survey-lab",
-      name: "Survey Lab",
-      url: "https://surveylab.example",
-      platform: "Sistema proprio",
-      objective: "Testar pesquisas segmentadas",
-      audience: "Comunidade beta",
-      status: "online",
-      trustScore: 71,
-      uptime: 99.8,
-      vault: "1Password: Survey Lab API",
-      api: "API propria",
-      lastAudit: "2026-05-17",
-      nextAction: "Documentar regras de antifraude"
-    },
-    {
-      id: "koin-help",
-      name: "Koin Help",
-      url: "https://help.example",
-      platform: "Help Center",
-      objective: "Reduzir suporte repetitivo",
-      audience: "Usuarios e suporte",
-      status: "online",
-      trustScore: 81,
-      uptime: 99.89,
-      vault: "Bitwarden: Help Center",
-      api: "Help Center API",
-      lastAudit: "2026-05-19",
-      nextAction: "Atualizar FAQ de prazo de resgate"
-    }
-  ],
-  socials: [
-    { id: "ig-main", siteId: "koin-research", channel: "Instagram", handle: "@koinresearch", cadence: "5 posts/semana", status: "agendado", posts: 18, clicks: 940, growth: 6.8 },
-    { id: "tt-main", siteId: "koin-research", channel: "TikTok", handle: "@koinresearch", cadence: "4 videos/semana", status: "fila", posts: 11, clicks: 720, growth: 9.1 },
-    { id: "li-partners", siteId: "koin-partners", channel: "LinkedIn", handle: "Koin Partners", cadence: "3 posts/semana", status: "atencao", posts: 7, clicks: 310, growth: 3.4 },
-    { id: "fb-prizes", siteId: "premios-zone", channel: "Facebook", handle: "Premios Zone", cadence: "3 posts/semana", status: "agendado", posts: 9, clicks: 420, growth: 2.8 },
-    { id: "yt-help", siteId: "koin-help", channel: "YouTube Shorts", handle: "Koin Help", cadence: "2 videos/semana", status: "rascunho", posts: 4, clicks: 180, growth: 1.9 },
-    { id: "x-lab", siteId: "survey-lab", channel: "X/Twitter", handle: "@surveylab", cadence: "5 posts/semana", status: "agendado", posts: 15, clicks: 530, growth: 4.6 }
-  ],
-  automations: [
-    { id: "daily-health", siteId: "all", name: "Auditoria diaria de saude", schedule: "Diaria 08:00", owner: "Codex", status: "ativa", risk: "baixo", output: "Alertas + tarefas", lastRun: "2026-05-19 08:00" },
-    { id: "seo-weekly", siteId: "all", name: "SEO e paginas de confianca", schedule: "Segunda 09:00", owner: "Codex", status: "ativa", risk: "medio", output: "Relatorio semanal", lastRun: "2026-05-18 09:00" },
-    { id: "content-weekly", siteId: "all", name: "Calendario editorial", schedule: "Terca 10:00", owner: "Codex", status: "ativa", risk: "medio", output: "Fila de conteudo", lastRun: "2026-05-19 10:00" },
-    { id: "publish-approved", siteId: "all", name: "Publicar aprovados", schedule: "Quarta 14:00", owner: "n8n", status: "pausada", risk: "alto", output: "Posts agendados", lastRun: "2026-05-13 14:00" },
-    { id: "fraud-scan", siteId: "survey-lab", name: "Deteccao de risco em Koins", schedule: "A cada 6 horas", owner: "Codex", status: "ativa", risk: "alto", output: "Fila de revisao", lastRun: "2026-05-19 12:00" },
-    { id: "prize-stock", siteId: "premios-zone", name: "Estoque de premios", schedule: "Diaria 11:30", owner: "Make", status: "ativa", risk: "medio", output: "Alerta de estoque", lastRun: "2026-05-19 11:30" }
-  ],
-  content: [
-    { id: "c1", siteId: "koin-research", title: "Como ganhar Koins respondendo pesquisas", channel: "Blog + Instagram", status: "Rascunho", risk: "baixo", due: "2026-05-21" },
-    { id: "c2", siteId: "premios-zone", title: "Novos premios disponiveis esta semana", channel: "Instagram + Email", status: "Aprovacao", risk: "alto", due: "2026-05-20" },
-    { id: "c3", siteId: "koin-help", title: "FAQ: quanto tempo demora um resgate?", channel: "Help Center", status: "Agendado", risk: "medio", due: "2026-05-22" },
-    { id: "c4", siteId: "koin-partners", title: "Como validamos respostas de pesquisa", channel: "LinkedIn", status: "Publicado", risk: "medio", due: "2026-05-18" },
-    { id: "c5", siteId: "survey-lab", title: "Checklist para evitar bloqueio por respostas invalidas", channel: "Blog", status: "Aprovacao", risk: "alto", due: "2026-05-20" },
-    { id: "c6", siteId: "koin-research", title: "Historia de usuario: primeiro resgate", channel: "TikTok", status: "Rascunho", risk: "medio", due: "2026-05-24" }
-  ],
-  prizes: [
-    { id: "p1", siteId: "premios-zone", name: "Gift card R$ 25", cost: 2500, stock: 42, redemptions: 18, status: "ok" },
-    { id: "p2", siteId: "premios-zone", name: "Gift card R$ 50", cost: 5000, stock: 8, redemptions: 11, status: "baixo" },
-    { id: "p3", siteId: "premios-zone", name: "Assinatura streaming", cost: 7200, stock: 3, redemptions: 7, status: "critico" },
-    { id: "p4", siteId: "survey-lab", name: "Voucher beta", cost: 1200, stock: 31, redemptions: 5, status: "ok" }
-  ],
-  approvals: [
-    { id: "a1", siteId: "premios-zone", title: "Campanha com promessa de premio", detail: "Precisa revisar clareza de prazo e estoque.", type: "Conteudo", risk: "alto", status: "pendente" },
-    { id: "a2", siteId: "survey-lab", title: "Bloqueio de usuarios suspeitos", detail: "Regra antifraude detectou 17 contas com comportamento similar.", type: "Koins", risk: "alto", status: "pendente" },
-    { id: "a3", siteId: "koin-help", title: "Atualizacao de FAQ de resgate", detail: "Texto novo reduz tickets repetidos.", type: "Suporte", risk: "medio", status: "pendente" },
-    { id: "a4", siteId: "koin-partners", title: "Publicar estudo para parceiros", detail: "Sem dados pessoais; usar numeros agregados.", type: "Autoridade", risk: "medio", status: "aprovado" }
-  ],
+  sites: [],
+  socials: [],
+  automations: [],
+  content: [],
+  prizes: [],
+  approvals: [],
   koins: {
-    issued: 128420,
-    redeemed: 84200,
-    pendingRedemptions: 37,
-    fraudAlerts: 9
+    issued: 0,
+    redeemed: 0,
+    pendingRedemptions: 0,
+    fraudAlerts: 0
   },
   reports: [
-    { day: "Seg", traffic: 64, posts: 35, signups: 42 },
-    { day: "Ter", traffic: 72, posts: 44, signups: 50 },
-    { day: "Qua", traffic: 58, posts: 38, signups: 35 },
-    { day: "Qui", traffic: 79, posts: 51, signups: 56 },
-    { day: "Sex", traffic: 88, posts: 60, signups: 63 },
-    { day: "Sab", traffic: 54, posts: 24, signups: 31 },
-    { day: "Dom", traffic: 49, posts: 20, signups: 27 }
+    { day: "Seg", traffic: 0, posts: 0, signups: 0 },
+    { day: "Ter", traffic: 0, posts: 0, signups: 0 },
+    { day: "Qua", traffic: 0, posts: 0, signups: 0 },
+    { day: "Qui", traffic: 0, posts: 0, signups: 0 },
+    { day: "Sex", traffic: 0, posts: 0, signups: 0 },
+    { day: "Sab", traffic: 0, posts: 0, signups: 0 },
+    { day: "Dom", traffic: 0, posts: 0, signups: 0 }
   ],
   rules: [
     { title: "Pode rodar sozinho", detail: "Auditoria, rascunhos, UTMs, relatorios, alertas e publicacao de conteudo ja aprovado." },
@@ -135,9 +28,7 @@ const seedData = {
     { title: "Credenciais", detail: "Guardar somente referencia ao cofre. Nunca salvar senha ou token aberto no dashboard." },
     { title: "Publicacao", detail: "Promessas sobre premios, ganhos e prazos entram na fila de aprovacao." }
   ],
-  auditLog: [
-    { date: "2026-05-19 08:00", summary: "Sem queda de site. 2 conteudos sensiveis aguardando aprovacao." }
-  ]
+  auditLog: []
 };
 
 let state = loadState();
@@ -165,7 +56,19 @@ function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) return clone(seedData);
   try {
-    return JSON.parse(saved);
+    const parsed = JSON.parse(saved);
+    const hasLegacyExamples = parsed.sites?.some((site) => [
+      "koin-research",
+      "koin-partners",
+      "premios-zone",
+      "survey-lab",
+      "koin-help"
+    ].includes(site.id));
+    if (hasLegacyExamples) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seedData));
+      return clone(seedData);
+    }
+    return parsed;
   } catch {
     return clone(seedData);
   }
@@ -311,9 +214,9 @@ function renderNextActions() {
 
 function renderFunnel() {
   const values = [
-    { label: "Cadastros", value: 420, max: 500, color: "green" },
-    { label: "Pesquisas", value: 310, max: 500, color: "" },
-    { label: "Koins", value: 242, max: 500, color: "amber" },
+    { label: "Cadastros", value: 0, max: 100, color: "green" },
+    { label: "Pesquisas", value: 0, max: 100, color: "" },
+    { label: "Koins", value: state.koins.issued, max: Math.max(100, state.koins.issued), color: "amber" },
     { label: "Resgates", value: state.koins.pendingRedemptions, max: 120, color: "" }
   ];
   qs("#funnelChart").innerHTML = values.map((item) => `
@@ -457,7 +360,7 @@ function renderApprovals() {
 }
 
 function renderReports() {
-  const maxTotal = Math.max(...state.reports.map((item) => item.traffic + item.posts + item.signups));
+  const maxTotal = Math.max(1, ...state.reports.map((item) => item.traffic + item.posts + item.signups));
   qs("#tractionChart").innerHTML = state.reports.map((item) => {
     const traffic = Math.round(item.traffic / maxTotal * 100);
     const posts = Math.round(item.posts / maxTotal * 100);
@@ -521,7 +424,12 @@ function cellTitle(title, subtitle) {
 }
 
 function emptyState(message) {
-  return `<div class="panel"><p class="muted">${esc(message)}</p></div>`;
+  return `
+    <div class="panel">
+      <p class="muted">${esc(message)}</p>
+      <p class="muted">Comece cadastrando um site na aba Sites ou importe um JSON exportado anteriormente.</p>
+    </div>
+  `;
 }
 
 function switchView(view) {
@@ -683,7 +591,7 @@ qs("#resetBtn").addEventListener("click", () => {
   qs("#searchInput").value = "";
   saveState();
   render();
-  toast("Dados de exemplo restaurados.");
+  toast("Dashboard limpo.");
 });
 qs("#addSiteQuickBtn").addEventListener("click", () => {
   switchView("sites");
