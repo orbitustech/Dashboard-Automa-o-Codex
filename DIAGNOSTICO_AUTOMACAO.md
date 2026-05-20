@@ -161,3 +161,19 @@ Use este pedido quando estiver pronto para a proxima etapa:
 Codex, vamos conectar o primeiro site real. O CMS e [ferramenta], o cofre tem a referencia [referencia], quero permissao apenas para criar rascunhos. Use o dashboard e a pasta operacao para configurar a automacao em modo seguro.
 ```
 
+## Diagnostico AWS
+
+Sua AWS pode ser usada como infraestrutura de automacao: Lambda, EventBridge Scheduler, Secrets Manager, CloudWatch, SQS, SNS/SES, API Gateway e S3. O plano completo esta em `AWS_AUTOMACAO_PLANO.md`.
+
+Ponto importante: AWS nao substitui autorizacao das plataformas. Para postar em CMS, redes sociais, suporte ou e-mail, ainda precisamos dos tokens e permissoes de cada ferramenta.
+
+## Fluxo de conteudo com Codex
+
+O fluxo desejado foi registrado em `operacao/FLUXO_CONTEUDO_CODEX.md`:
+
+1. Codex planeja e cria conteudo.
+2. Dashboard recebe o item como rascunho/aprovacao.
+3. Voce aprova.
+4. Automacao cria tarefa de distribuicao.
+5. AWS ou ferramenta conectada publica/agenda.
+6. Dashboard recebe link, UTM e status.
