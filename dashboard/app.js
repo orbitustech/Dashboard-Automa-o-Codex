@@ -1,4 +1,5 @@
-const STORAGE_KEY = "koinops-dashboard-v1";
+const STORAGE_KEY = "koinops-dashboard-v2";
+const supabaseConfig = window.KOINOPS_SUPABASE || {};
 
 const seedData = {
   sites: [],
@@ -33,6 +34,7 @@ const seedData = {
 
 let state = loadState();
 let currentView = "overview";
+let syncMode = "local";
 let filters = {
   siteId: "all",
   search: ""
@@ -57,18 +59,7 @@ function loadState() {
   if (!saved) return clone(seedData);
   try {
     const parsed = JSON.parse(saved);
-    const hasLegacyExamples = parsed.sites?.some((site) => [
-      "koin-research",
-      "koin-partners",
-      "premios-zone",
-      "survey-lab",
-      "koin-help"
-    ].includes(site.id));
-    if (hasLegacyExamples) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(seedData));
-      return clone(seedData);
-    }
-    return parsed;
+    return { ...clone(seedData), ...parsed, sites: normalizeSites(parsed.sites || []) };
   } catch {
     return clone(seedData);
   }
@@ -99,18 +90,141 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
+function isSupabaseReady() {
+  return Boolean(
+    supabaseConfig.url &&
+    supabaseConfig.anonKey &&
+    !supabaseConfig.anonKey.includes("COLE_SUA")
+  );
+}
+
+function supabaseHeaders(extra = {}) {
+  return {
+    apikey: supabaseConfig.anonKey,
+    Authorization: `Bearer ${supabaseConfig.anonKey}`,
+    "Content-Type": "application/json",
+    ...extra
+  };
+}
+
+async function supabaseRequest(path, options = {}) {
+  if (!isSupabaseReady()) throw new Error("Supabase nao configurado");
+  const response = await fetch(`${supabaseConfig.url}/rest/v1/${path}`, {
+    ...options,
+    headers: supabaseHeaders(options.headers)
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(detail || `Erro Supabase ${response.status}`);
+  }
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+function normalizeSites(sites) {
+  return sites.map((site) => ({
+    id: site.id,
+    name: site.name || "",
+    url: site.url || "",
+    objective: site.objective || "",
+    status: site.status || "ativo",
+    vault_reference: site.vault_reference || site.vault || "",
+    api_type: site.api_type || site.api || site.platform || "",
+    last_audit: site.last_audit || site.lastAudit || null,
+    next_action: site.next_action || site.nextAction || "Definir proxima acao",
+    created_at: site.created_at || null,
+    updated_at: site.updated_at || null
+  }));
+}
+
+async function syncSitesFromSupabase(showSuccess = true) {
+  if (!isSupabaseReady()) {
+    syncMode = "local";
+    updateSyncStatus("Configure a chave do Supabase", "warn");
+    return;
+  }
+  try {
+    updateSyncStatus("Sincronizando...", "info");
+    const rows = await supabaseRequest("sites?select=*&order=created_at.desc");
+    state.sites = normalizeSites(rows);
+    saveState();
+    syncMode = "supabase";
+    render();
+    updateSyncStatus("Supabase conectado", "ok");
+    if (showSuccess) toast("Dados sincronizados com Supabase.");
+  } catch (error) {
+    syncMode = "local";
+    updateSyncStatus("Falha no Supabase", "risk");
+    toast(`Supabase: ${error.message}`);
+  }
+}
+
+async function createSite(site) {
+  if (!isSupabaseReady()) {
+    const localSite = { ...site, id: `local-${Date.now()}` };
+    state.sites.unshift(localSite);
+    syncMode = "local";
+    return localSite;
+  }
+  const [created] = await supabaseRequest("sites", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(site)
+  });
+  syncMode = "supabase";
+  return normalizeSites([created])[0];
+}
+
+async function updateSite(id, patch) {
+  if (!isSupabaseReady()) {
+    state.sites = state.sites.map((site) => site.id === id ? { ...site, ...patch } : site);
+    syncMode = "local";
+    return;
+  }
+  await supabaseRequest(`sites?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(patch)
+  });
+  syncMode = "supabase";
+}
+
+async function deleteSite(id) {
+  if (isSupabaseReady() && !String(id).startsWith("local-")) {
+    await supabaseRequest(`sites?id=eq.${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" }
+    });
+    syncMode = "supabase";
+  }
+  state.sites = state.sites.filter((site) => site.id !== id);
+}
+
+function updateSyncStatus(label, type = "info") {
+  const status = qs("#syncStatus");
+  status.textContent = label;
+  status.dataset.type = type;
+}
+
 function siteName(siteId) {
   if (siteId === "all") return "Todos";
   return state.sites.find((site) => site.id === siteId)?.name || siteId;
 }
 
+function formatDate(value) {
+  if (!value) return "Pendente";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
 function statusChip(status) {
   const normalized = String(status).toLowerCase();
-  const type = normalized.includes("online") || normalized.includes("ativa") || normalized.includes("aprovado") || normalized.includes("ok")
+  const type = normalized.includes("ativo") || normalized.includes("aprovado") || normalized.includes("ok")
     ? "ok"
-    : normalized.includes("pendente") || normalized.includes("atencao") || normalized.includes("pausada") || normalized.includes("baixo")
+    : normalized.includes("pendente") || normalized.includes("atencao") || normalized.includes("pausado") || normalized.includes("baixo")
       ? "warn"
-      : normalized.includes("alto") || normalized.includes("critico") || normalized.includes("risco")
+      : normalized.includes("inativo") || normalized.includes("alto") || normalized.includes("critico") || normalized.includes("risco")
         ? "risk"
         : "info";
   return `<span class="chip ${type}">${esc(status)}</span>`;
@@ -135,11 +249,6 @@ function filtered(items) {
   return items.filter((item) => matchesSite(item) && matchesSearch(item));
 }
 
-function average(values) {
-  if (!values.length) return 0;
-  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
-}
-
 function render() {
   renderSiteFilter();
   renderKpis();
@@ -153,6 +262,7 @@ function render() {
   renderApprovals();
   renderReports();
   renderSettings();
+  updateSyncStatus(syncMode === "supabase" ? "Supabase conectado" : "Modo local", syncMode === "supabase" ? "ok" : "info");
 }
 
 function renderSiteFilter() {
@@ -171,9 +281,10 @@ function renderKpis() {
   const approvals = filtered(state.approvals).filter((item) => item.status === "pendente");
   const automations = filtered(state.automations).filter((item) => item.status === "ativa");
   const prizeAlerts = filtered(state.prizes).filter((item) => item.status !== "ok");
+  const audited = sites.filter((site) => site.last_audit).length;
   const kpis = [
-    { label: "Sites online", value: sites.filter((site) => site.status === "online").length, hint: `${sites.length} monitorados` },
-    { label: "Score medio", value: `${average(sites.map((site) => site.trustScore))}%`, hint: "confianca publica" },
+    { label: "Sites ativos", value: sites.filter((site) => site.status === "ativo").length, hint: `${sites.length} cadastrados` },
+    { label: "Com auditoria", value: audited, hint: "ultima auditoria registrada" },
     { label: "Aprovacoes", value: approvals.length, hint: "pendentes" },
     { label: "Automacoes", value: automations.length, hint: "ativas agora" },
     { label: "Alertas", value: prizeAlerts.length, hint: "premios/estoque" }
@@ -189,9 +300,9 @@ function renderKpis() {
 
 function renderNextActions() {
   const siteActions = filtered(state.sites).map((site) => ({
-    title: site.nextAction,
-    detail: `${site.name} - score ${site.trustScore}%`,
-    risk: site.trustScore < 78 ? "medio" : "baixo"
+    title: site.next_action || "Definir proxima acao",
+    detail: `${site.name} - ${site.status}`,
+    risk: site.status === "atencao" ? "medio" : site.status === "inativo" ? "alto" : "baixo"
   }));
   const approvalActions = filtered(state.approvals)
     .filter((item) => item.status === "pendente")
@@ -214,7 +325,7 @@ function renderNextActions() {
 
 function renderFunnel() {
   const values = [
-    { label: "Cadastros", value: 0, max: 100, color: "green" },
+    { label: "Cadastros", value: state.sites.length, max: Math.max(5, state.sites.length), color: "green" },
     { label: "Pesquisas", value: 0, max: 100, color: "" },
     { label: "Koins", value: state.koins.issued, max: Math.max(100, state.koins.issued), color: "amber" },
     { label: "Resgates", value: state.koins.pendingRedemptions, max: 120, color: "" }
@@ -231,15 +342,20 @@ function renderFunnel() {
 function renderSites() {
   const sites = filtered(state.sites);
   qs("#sitesTable").innerHTML = tableMarkup(
-    ["Site", "Objetivo", "Plataforma/API", "Status", "Score", "Cofre", "Proxima acao"],
+    ["Nome do site", "URL", "Objetivo", "Status", "Referencia do cofre", "Tipo de API", "Ultima auditoria", "Proxima acao", "Acoes"],
     sites.map((site) => [
-      cellTitle(site.name, site.url),
+      esc(site.name),
+      `<a href="${esc(site.url)}" target="_blank" rel="noreferrer">${esc(site.url)}</a>`,
       esc(site.objective),
-      cellTitle(site.platform, site.api),
       statusChip(site.status),
-      `<strong>${site.trustScore}%</strong><br><span class="muted">${site.uptime}% uptime</span>`,
-      esc(site.vault),
-      esc(site.nextAction)
+      esc(site.vault_reference),
+      esc(site.api_type),
+      esc(formatDate(site.last_audit)),
+      esc(site.next_action),
+      `<div class="row-actions">
+        <button class="mini-btn" data-action="auditSite" data-id="${esc(site.id)}">Auditar</button>
+        <button class="mini-btn reject" data-action="deleteSite" data-id="${esc(site.id)}">Excluir</button>
+      </div>`
     ])
   );
 }
@@ -379,10 +495,10 @@ function renderReports() {
   const last = state.auditLog.at(-1);
   qs("#lastAuditLabel").textContent = last ? last.date : "Sem auditoria";
   const summary = [
-    `Score medio de confianca: ${average(state.sites.map((site) => site.trustScore))}%.`,
-    `${state.approvals.filter((item) => item.status === "pendente").length} aprovacoes pendentes.`,
+    `${state.sites.length} sites cadastrados no inventario principal.`,
+    `${state.sites.filter((site) => site.status === "atencao").length} sites marcados com atencao.`,
+    `${state.sites.filter((site) => site.last_audit).length} sites com ultima auditoria registrada.`,
     `${state.content.filter((item) => item.status !== "Publicado").length} conteudos em producao.`,
-    `${state.prizes.filter((item) => item.status !== "ok").length} premios com atencao de estoque.`,
     last ? last.summary : "Nenhuma auditoria registrada."
   ];
   qs("#executiveSummary").innerHTML = summary.map((item) => `<article class="action-row"><p>${esc(item)}</p>${statusChip("info")}</article>`).join("");
@@ -398,15 +514,15 @@ function renderSettings() {
       ${statusChip("regra")}
     </article>
   `).join("");
-  qs("#vaultList").innerHTML = state.sites.map((site) => `
+  qs("#vaultList").innerHTML = state.sites.length ? state.sites.map((site) => `
     <article class="vault-row">
       <div>
         <h5>${esc(site.name)}</h5>
-        <p>${esc(site.vault)} - ${esc(site.api)}</p>
+        <p>${esc(site.vault_reference)} - ${esc(site.api_type)}</p>
       </div>
       ${statusChip(site.status)}
     </article>
-  `).join("");
+  `).join("") : emptyState("Nenhuma referencia de cofre cadastrada.");
 }
 
 function tableMarkup(headers, rows) {
@@ -427,7 +543,7 @@ function emptyState(message) {
   return `
     <div class="panel">
       <p class="muted">${esc(message)}</p>
-      <p class="muted">Comece cadastrando um site na aba Sites ou importe um JSON exportado anteriormente.</p>
+      <p class="muted">Comece cadastrando um site na aba Sites ou sincronize o Supabase.</p>
     </div>
   `;
 }
@@ -444,51 +560,67 @@ function toast(message) {
   node.textContent = message;
   node.classList.add("show");
   window.clearTimeout(toast.timeout);
-  toast.timeout = window.setTimeout(() => node.classList.remove("show"), 2400);
+  toast.timeout = window.setTimeout(() => node.classList.remove("show"), 2600);
 }
 
-function addSite(form) {
+async function addSite(form) {
   const data = new FormData(form);
-  const name = data.get("name").trim();
-  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `site-${Date.now()}`;
-  state.sites.push({
-    id,
-    name,
+  const site = {
+    name: data.get("name").trim(),
     url: data.get("url").trim(),
-    platform: data.get("platform").trim(),
     objective: data.get("objective").trim(),
-    audience: "Definir publico",
-    status: "atencao",
-    trustScore: 60,
-    uptime: 0,
-    vault: data.get("vault").trim(),
-    api: "Definir API",
-    lastAudit: "pendente",
-    nextAction: "Completar checklist de confianca"
-  });
-  saveState();
-  form.reset();
-  filters.siteId = id;
-  render();
-  qs("#siteFilter").value = id;
-  toast("Site adicionado ao dashboard.");
+    status: data.get("status"),
+    vault_reference: data.get("vault_reference").trim(),
+    api_type: data.get("api_type").trim(),
+    next_action: data.get("next_action").trim()
+  };
+
+  try {
+    const created = await createSite(site);
+    state.sites = [created, ...state.sites.filter((item) => item.id !== created.id)];
+    saveState();
+    form.reset();
+    filters.siteId = created.id;
+    render();
+    qs("#siteFilter").value = created.id;
+    toast(syncMode === "supabase" ? "Site salvo no Supabase." : "Site salvo no modo local.");
+  } catch (error) {
+    toast(`Nao foi possivel salvar: ${error.message}`);
+  }
 }
 
-function runAudit() {
-  const now = new Date();
-  const stamp = now.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-  state.sites = state.sites.map((site) => ({
-    ...site,
-    lastAudit: stamp,
-    trustScore: Math.min(96, Math.max(58, site.trustScore + (site.status === "online" ? 1 : -1)))
-  }));
-  state.auditLog.push({
-    date: stamp,
-    summary: "Auditoria simulada concluida: sites atualizados, fila de aprovacao preservada e alertas recalculados."
-  });
-  saveState();
-  render();
-  toast("Auditoria simulada registrada.");
+async function auditSite(id) {
+  const stamp = new Date().toISOString();
+  try {
+    await updateSite(id, { last_audit: stamp });
+    state.sites = state.sites.map((site) => site.id === id ? { ...site, last_audit: stamp } : site);
+    state.auditLog.push({
+      date: formatDate(stamp),
+      summary: `Auditoria registrada para ${siteName(id)}.`
+    });
+    saveState();
+    render();
+    toast("Ultima auditoria atualizada.");
+  } catch (error) {
+    toast(`Nao foi possivel auditar: ${error.message}`);
+  }
+}
+
+async function runAudit() {
+  const stamp = new Date().toISOString();
+  try {
+    await Promise.all(filtered(state.sites).map((site) => updateSite(site.id, { last_audit: stamp })));
+    state.sites = state.sites.map((site) => matchesSite(site) ? { ...site, last_audit: stamp } : site);
+    state.auditLog.push({
+      date: formatDate(stamp),
+      summary: "Auditoria registrada nos sites do filtro atual."
+    });
+    saveState();
+    render();
+    toast("Auditoria registrada.");
+  } catch (error) {
+    toast(`Auditoria falhou: ${error.message}`);
+  }
 }
 
 function exportJson() {
@@ -508,11 +640,11 @@ function importJson(file) {
     try {
       const incoming = JSON.parse(reader.result);
       if (!Array.isArray(incoming.sites)) throw new Error("Arquivo invalido");
-      state = incoming;
+      state = { ...clone(seedData), ...incoming, sites: normalizeSites(incoming.sites) };
       saveState();
       filters.siteId = "all";
       render();
-      toast("JSON importado com sucesso.");
+      toast("JSON importado no modo local.");
     } catch {
       toast("Nao foi possivel importar esse JSON.");
     }
@@ -520,7 +652,7 @@ function importJson(file) {
   reader.readAsText(file);
 }
 
-document.addEventListener("click", (event) => {
+document.addEventListener("click", async (event) => {
   const navButton = event.target.closest(".nav-item");
   if (navButton) {
     switchView(navButton.dataset.view);
@@ -530,6 +662,20 @@ document.addEventListener("click", (event) => {
   const actionButton = event.target.closest("[data-action]");
   if (actionButton) {
     const { action, id, status } = actionButton.dataset;
+    if (action === "auditSite") {
+      await auditSite(id);
+    }
+    if (action === "deleteSite") {
+      try {
+        await deleteSite(id);
+        saveState();
+        filters.siteId = "all";
+        render();
+        toast("Site excluido.");
+      } catch (error) {
+        toast(`Nao foi possivel excluir: ${error.message}`);
+      }
+    }
     if (action === "toggleAutomation") {
       const automation = state.automations.find((item) => item.id === id);
       automation.status = automation.status === "ativa" ? "pausada" : "ativa";
@@ -578,6 +724,7 @@ qs("#siteFilter").addEventListener("change", (event) => {
 });
 
 qs("#runAuditBtn").addEventListener("click", runAudit);
+qs("#syncBtn").addEventListener("click", () => syncSitesFromSupabase(true));
 qs("#exportBtn").addEventListener("click", exportJson);
 qs("#importBtn").addEventListener("click", () => qs("#importFile").click());
 qs("#importFile").addEventListener("change", (event) => {
@@ -591,7 +738,7 @@ qs("#resetBtn").addEventListener("click", () => {
   qs("#searchInput").value = "";
   saveState();
   render();
-  toast("Dashboard limpo.");
+  toast("Dashboard limpo localmente.");
 });
 qs("#addSiteQuickBtn").addEventListener("click", () => {
   switchView("sites");
@@ -599,3 +746,4 @@ qs("#addSiteQuickBtn").addEventListener("click", () => {
 });
 
 render();
+syncSitesFromSupabase(false);

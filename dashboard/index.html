@@ -55,6 +55,10 @@
       <symbol id="icon-upload" viewBox="0 0 24 24">
         <path d="M12 20V10M8 14l4-4 4 4M5 4h14" />
       </symbol>
+      <symbol id="icon-sync" viewBox="0 0 24 24">
+        <path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" />
+        <path d="M18 4v4h-4M6 20v-4h4" />
+      </symbol>
     </svg>
 
     <div class="app-shell">
@@ -110,6 +114,7 @@
             <h2 id="viewTitle">Visao geral</h2>
           </div>
           <div class="topbar-tools">
+            <span class="sync-status" id="syncStatus">Local</span>
             <label class="field search-field">
               <span>Buscar</span>
               <input id="searchInput" type="search" placeholder="site, canal, premio..." />
@@ -120,6 +125,9 @@
             </label>
             <button class="icon-btn" id="runAuditBtn" title="Rodar auditoria simulada">
               <svg><use href="#icon-play"></use></svg>
+            </button>
+            <button class="icon-btn" id="syncBtn" title="Sincronizar Supabase">
+              <svg><use href="#icon-sync"></use></svg>
             </button>
             <button class="icon-btn" id="exportBtn" title="Exportar JSON">
               <svg><use href="#icon-download"></use></svg>
@@ -168,11 +176,21 @@
             </div>
           </div>
           <form id="siteForm" class="form-grid panel" autocomplete="off">
-            <label class="field"><span>Nome</span><input name="name" required placeholder="Nome do seu site" /></label>
+            <label class="field"><span>Nome do site</span><input name="name" required placeholder="Nome do seu site" /></label>
             <label class="field"><span>URL</span><input name="url" required placeholder="https://..." /></label>
-            <label class="field"><span>Plataforma</span><input name="platform" required placeholder="WordPress, Webflow..." /></label>
             <label class="field"><span>Objetivo</span><input name="objective" required placeholder="Captar usuarios" /></label>
-            <label class="field"><span>Cofre</span><input name="vault" required placeholder="Bitwarden: Site Admin" /></label>
+            <label class="field">
+              <span>Status</span>
+              <select name="status">
+                <option value="ativo">Ativo</option>
+                <option value="pausado">Pausado</option>
+                <option value="atencao">Atencao</option>
+                <option value="inativo">Inativo</option>
+              </select>
+            </label>
+            <label class="field"><span>Referencia do cofre</span><input name="vault_reference" required placeholder="Bitwarden: Site Admin" /></label>
+            <label class="field"><span>Tipo de API</span><input name="api_type" required placeholder="REST, GraphQL, sem API..." /></label>
+            <label class="field"><span>Proxima acao</span><input name="next_action" required placeholder="Configurar auditoria inicial" /></label>
             <button class="primary-btn form-submit" type="submit">
               <svg><use href="#icon-plus"></use></svg><span>Adicionar</span>
             </button>
@@ -286,6 +304,7 @@
       </main>
     </div>
 
+    <script src="config.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
