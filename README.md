@@ -32,13 +32,7 @@ O projeto ja esta apontando para:
 https://nbbprjduqtndkwbknyud.supabase.co
 ```
 
-Para ativar o salvamento em nuvem, abra `dashboard/config.js` e troque:
-
-```js
-anonKey: "COLE_SUA_SUPABASE_ANON_KEY_AQUI"
-```
-
-pela chave `anon public` em Supabase > Project Settings > API. Depois faca commit e push. O GitHub Pages vai usar essa configuracao publicada.
+O arquivo `dashboard/config.js` ja inclui uma chave publicavel do Supabase para ativar o salvamento em nuvem no GitHub Pages.
 
 ## Seguranca
 
