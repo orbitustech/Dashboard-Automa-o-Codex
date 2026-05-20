@@ -39,6 +39,13 @@ Depois acesse `http://127.0.0.1:8765`.
 - `Relatorios`: registre trafego, posts e cadastros por dia para alimentar os graficos e o resumo executivo.
 - `Governanca`: mantenha regras de seguranca e limites de automacao, alem das referencias de cofre vindas dos sites.
 
+## Diagnostico e operacao
+
+- `DIAGNOSTICO_AUTOMACAO.md`: mostra o que falta, o que ja foi feito e quais integracoes precisam da sua intervencao.
+- `operacao/PROMPTS_CODEX.md`: prompts fixos para auditoria, conteudo, risco, relatorio e FAQ.
+- `operacao/CHECKLIST_ACEITE.md`: criterios de aceite antes de publicar, responder ou registrar automacoes.
+- `operacao/_template_site`: modelo para criar uma pasta de contexto para cada site real.
+
 ## Supabase
 
 O projeto ja esta apontando para:
