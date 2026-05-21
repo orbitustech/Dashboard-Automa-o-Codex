@@ -1,0 +1,23 @@
+name: Buffer List Channels
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list-channels:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: List Buffer channels
+        run: node scripts/buffer-list-channels.mjs
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}

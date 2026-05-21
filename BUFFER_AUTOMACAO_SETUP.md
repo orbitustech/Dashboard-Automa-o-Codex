@@ -8,6 +8,7 @@ Este arquivo deixa a publicacao social pronta para rodar sem guardar senha no re
 - O dashboard permite cadastrar `Buffer Channel ID`, texto do post e URL de midia.
 - O script `scripts/buffer-publish.mjs` busca a fila em `distribution_tasks` e cria posts no Buffer.
 - O GitHub Actions `.github/workflows/buffer-publish.yml` roda o publicador manualmente.
+- O GitHub Actions `.github/workflows/buffer-list-channels.yml` lista os canais conectados no Buffer.
 - O script `scripts/buffer-list-channels.mjs` lista os canais conectados no Buffer quando a chave estiver disponivel.
 
 ## O que voce precisa fazer
@@ -17,8 +18,10 @@ Este arquivo deixa a publicacao social pronta para rodar sem guardar senha no re
 3. Va em `Settings > Secrets and variables > Actions > New repository secret`.
 4. Crie o segredo `BUFFER_API_KEY` com a chave que voce guardou no 1Password.
 5. Opcional: crie `SUPABASE_ANON_KEY` com a chave publicavel do Supabase. Se nao criar, o script usa a chave que ja esta no dashboard.
-6. Rode o workflow `Buffer Publish` primeiro com `dry_run = 1`.
-7. Quando estiver tudo certo, rode de novo com `dry_run = 0`.
+6. Rode o workflow `Buffer List Channels` e copie os IDs exibidos no log.
+7. Preencha esses IDs na aba `Redes` e na fila de distribuicao do dashboard.
+8. Rode o workflow `Buffer Publish` primeiro com `dry_run = 1`.
+9. Quando estiver tudo certo, rode de novo com `dry_run = 0`.
 
 Nunca cole a chave do Buffer no chat, em arquivo do projeto ou no dashboard.
 

@@ -56,6 +56,7 @@ O dashboard ja tem campos para `Buffer Channel ID`, texto do post e midia. A aut
 ```txt
 scripts/buffer-publish.mjs
 .github/workflows/buffer-publish.yml
+.github/workflows/buffer-list-channels.yml
 ```
 
 Para ativar, crie no GitHub Actions o segredo `BUFFER_API_KEY` com a chave salva no 1Password. Depois rode o workflow `Buffer Publish` primeiro com `dry_run = 1`.
