@@ -169,6 +169,7 @@ function normalizeSocials(items) {
     channel: item.channel || "",
     handle: item.handle || "",
     profile_url: item.profile_url || item.url || "",
+    buffer_channel_id: item.buffer_channel_id || item.bufferChannelId || "",
     cadence: item.cadence || "",
     posts_per_month: Number(item.posts_per_month ?? item.posts ?? 0),
     clicks: Number(item.clicks ?? 0),
@@ -203,6 +204,8 @@ function normalizeContent(items) {
     site_id: item.site_id || item.siteId || "",
     title: item.title || "",
     channel: item.channel || "",
+    body: item.body || item.text || "",
+    asset_url: item.asset_url || item.assetUrl || "",
     status: item.status || "Rascunho",
     risk: item.risk || "baixo",
     due_date: item.due_date || item.due || null,
@@ -223,6 +226,8 @@ function normalizeDistribution(items) {
     site_id: item.site_id || item.siteId || "",
     content_id: item.content_id || item.contentId || "",
     target: item.target || "",
+    buffer_channel_id: item.buffer_channel_id || item.bufferChannelId || "",
+    buffer_post_id: item.buffer_post_id || item.bufferPostId || "",
     status: item.status || "fila",
     scheduled_for: item.scheduled_for || null,
     published_at: item.published_at || null,
@@ -232,6 +237,7 @@ function normalizeDistribution(items) {
     utm_campaign: item.utm_campaign || "",
     utm_url: item.utm_url || "",
     note: item.note || "",
+    error_message: item.error_message || item.errorMessage || "",
     created_at: item.created_at || null,
     updated_at: item.updated_at || null
   }));
@@ -716,6 +722,7 @@ function renderSocial() {
         <div><strong>${esc(item.clicks)}</strong><span>cliques</span></div>
       </div>
       <p class="muted">${esc(item.cadence || "Sem cadencia")} - crescimento ${esc(item.growth)}%</p>
+      <p class="muted">Buffer: ${esc(item.buffer_channel_id || "nao mapeado")}</p>
       <p class="muted">${esc(item.next_action || "Sem proxima acao")}</p>
       <div class="row-actions">
         ${item.profile_url ? `<a class="mini-btn" href="${esc(item.profile_url)}" target="_blank" rel="noreferrer">Abrir</a>` : ""}
@@ -757,6 +764,8 @@ function renderContent() {
           <article class="content-item" data-risk="${esc(item.risk)}">
             <h5>${esc(item.title)}</h5>
             <p>${esc(siteName(item.site_id))} - ${esc(item.channel || "sem canal")} - vence ${esc(formatShortDate(item.due_date))}</p>
+            ${item.body ? `<p>${esc(item.body.slice(0, 180))}${item.body.length > 180 ? "..." : ""}</p>` : ""}
+            ${item.asset_url ? `<p><a href="${esc(item.asset_url)}" target="_blank" rel="noreferrer">Midia</a></p>` : ""}
             <p>${esc(item.next_action || "Sem proxima acao")}</p>
             ${item.published_url ? `<p><a href="${esc(item.published_url)}" target="_blank" rel="noreferrer">Publicado</a></p>` : ""}
             <div class="row-actions">
@@ -781,12 +790,13 @@ function nextContentButton(item) {
 function renderDistribution() {
   const tasks = filtered(state.distribution);
   qs("#distributionTable").innerHTML = tableMarkup(
-    ["Conteudo", "Site", "Destino", "Status", "Agendamento", "UTM", "Publicado", "Observacao", "Acoes"],
+    ["Conteudo", "Site", "Destino", "Status", "Buffer", "Agendamento", "UTM", "Publicado", "Observacao", "Acoes"],
     tasks.map((item) => [
       esc(contentTitle(item.content_id)),
       esc(siteName(item.site_id)),
       esc(item.target),
       statusChip(item.status),
+      cellTitle(item.buffer_channel_id || "Sem canal", item.buffer_post_id || item.error_message || "aguardando envio"),
       esc(formatDate(item.scheduled_for)),
       item.utm_url ? `<a href="${esc(item.utm_url)}" target="_blank" rel="noreferrer">Abrir UTM</a>` : esc("Pendente"),
       item.published_url ? `<a href="${esc(item.published_url)}" target="_blank" rel="noreferrer">Link</a>` : esc(formatDate(item.published_at)),
@@ -1074,6 +1084,7 @@ function socialPayload(data) {
     channel: formString(data, "channel"),
     handle: formString(data, "handle"),
     profile_url: formString(data, "profile_url"),
+    buffer_channel_id: formString(data, "buffer_channel_id"),
     cadence: formString(data, "cadence"),
     posts_per_month: formNumber(data, "posts_per_month"),
     clicks: formNumber(data, "clicks"),
@@ -1101,6 +1112,8 @@ function contentPayload(data) {
     site_id: requireSite(data),
     title: formString(data, "title"),
     channel: formString(data, "channel"),
+    body: formString(data, "body"),
+    asset_url: formString(data, "asset_url"),
     status: formString(data, "status", "Rascunho"),
     risk: formString(data, "risk", "baixo"),
     due_date: formString(data, "due_date") || null,
@@ -1117,6 +1130,7 @@ function distributionPayload(data) {
     site_id: requireSite(data),
     content_id: formString(data, "content_id") || null,
     target: formString(data, "target"),
+    buffer_channel_id: formString(data, "buffer_channel_id"),
     status: formString(data, "status", "fila"),
     scheduled_for: formDateTime(data, "scheduled_for"),
     published_at: formString(data, "status") === "publicado" ? new Date().toISOString() : null,

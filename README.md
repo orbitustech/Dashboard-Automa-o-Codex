@@ -47,6 +47,18 @@ Depois acesse `http://127.0.0.1:8765`.
 - `operacao/CHECKLIST_ACEITE.md`: criterios de aceite antes de publicar, responder ou registrar automacoes.
 - `operacao/_template_site`: modelo para criar uma pasta de contexto para cada site real.
 - `AWS_AUTOMACAO_PLANO.md`: como usar AWS para rodar automacoes, guardar segredos, agendar tarefas e enviar alertas.
+- `BUFFER_AUTOMACAO_SETUP.md`: passo a passo para conectar Buffer, GitHub Actions e fila de publicacao.
+
+## Buffer e publicacao social
+
+O dashboard ja tem campos para `Buffer Channel ID`, texto do post e midia. A automacao de envio fica em:
+
+```txt
+scripts/buffer-publish.mjs
+.github/workflows/buffer-publish.yml
+```
+
+Para ativar, crie no GitHub Actions o segredo `BUFFER_API_KEY` com a chave salva no 1Password. Depois rode o workflow `Buffer Publish` primeiro com `dry_run = 1`.
 
 ## Supabase
 

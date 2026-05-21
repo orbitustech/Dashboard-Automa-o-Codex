@@ -1,0 +1,31 @@
+name: Buffer Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Executar sem postar no Buffer"
+        required: false
+        default: "0"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Publish queued posts to Buffer
+        run: node scripts/buffer-publish.mjs
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          SUPABASE_URL: https://nbbprjduqtndkwbknyud.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          DRY_RUN: ${{ inputs.dry_run }}

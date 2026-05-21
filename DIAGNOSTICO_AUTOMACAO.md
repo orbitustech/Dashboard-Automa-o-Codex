@@ -1,6 +1,6 @@
 # Diagnostico de Automacao - KoinOps
 
-Data do diagnostico: 2026-05-20
+Data do diagnostico: 2026-05-21
 
 ## Resumo
 
@@ -16,7 +16,7 @@ O dashboard, o Supabase e o GitHub Pages ja estao prontos como base operacional.
 | Fase 3 - Pasta operacional | Feita agora em template | Criada a pasta `operacao/_template_site` com arquivos base para cada site. |
 | Fase 4 - Auditoria real | Pendente de integracoes | Falta conectar uptime, SSL, SEO, Search Console/Analytics e funil real do site. |
 | Fase 5 - Conteudo automatico | Parcial | Dashboard tem kanban; falta contexto por site preenchido e rotina do Codex para gerar calendario/conteudo. |
-| Fase 6 - Publicacao | Parcial | Fila, UTMs e status existem; falta conectar CMS/agendador social para publicar de verdade. |
+| Fase 6 - Publicacao | Avancada | Fila, UTMs, campos Buffer, script de envio e GitHub Actions existem; falta voce adicionar o segredo `BUFFER_API_KEY` no GitHub e mapear os Channel IDs. |
 | Fase 7 - Suporte | Parcial | Classificacao, resposta sugerida e FAQ existem; falta conectar canais de suporte/redes. |
 | Fase 8 - Koins/premios | Parcial | Metricas e premios existem; falta API real de saldo, resgates e antifraude. |
 | Fase 9 - Relatorios | Parcial | Relatorios manuais existem; falta automacao diaria/semanal/mensal. |
@@ -50,6 +50,7 @@ Contagem real consultada por SQL:
 - Criar prompts base para o Codex.
 - Criar checklist de aceite para auditoria, conteudo, suporte, relatorios e publicacao.
 - Documentar quais integracoes faltam e quais permissoes devem ser criadas.
+- Preparar a integracao Buffer com scripts e workflow do GitHub Actions.
 
 ## Intervencoes que preciso de voce
 
@@ -57,8 +58,8 @@ Contagem real consultada por SQL:
 
 Voce precisa:
 
-- Escolher/confirmar o cofre: Bitwarden, 1Password ou outro.
-- Mover senhas reais para o cofre.
+- Manter senhas reais no 1Password.
+- Copiar a chave Buffer do 1Password para o segredo `BUFFER_API_KEY` do GitHub Actions.
 - Ativar 2FA em CMS, redes, e-mail, analytics e ferramentas de automacao.
 - Criar usuarios tecnicos separados sempre que a plataforma permitir.
 
@@ -78,20 +79,15 @@ Resultado esperado: Codex criar rascunhos/artigos e atualizar status no dashboar
 
 ### 3. Publicacao social
 
-Escolha uma rota:
-
-- Metricool
-- Buffer
-- Publer
-- Meta Business Suite
-- API direta de cada rede, quando disponivel
+Rota escolhida: Buffer.
 
 Preciso de:
 
 - Contas/perfis oficiais.
-- Quais redes podem receber posts automaticamente.
-- Se publicacao deve ser rascunho, agendada ou publicada.
-- Referencia do token/API no cofre.
+- Redes conectadas dentro do Buffer.
+- `Buffer Channel ID` preenchido no dashboard para cada perfil.
+- Segredo `BUFFER_API_KEY` configurado no GitHub Actions.
+- Confirmacao se a publicacao deve entrar na fila do Buffer ou ser agendada com horario especifico.
 
 Resultado esperado: fila de distribuicao virar agendamento real.
 
