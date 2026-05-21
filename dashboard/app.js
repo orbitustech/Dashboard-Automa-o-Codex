@@ -786,10 +786,9 @@ function renderContent() {
 }
 
 function nextContentButton(item) {
-  const index = columns.indexOf(item.status);
-  if (index < 0 || index === columns.length - 1) return "";
-  const label = index === 1 ? "Aprovar" : "Avancar";
-  return miniButton("advanceContent", item.id, label, "approve");
+  if (item.status === "Rascunho") return miniButton("advanceContent", item.id, "Enviar para revisao");
+  if (item.status === "Aprovacao") return miniButton("advanceContent", item.id, "Aprovar e criar fila", "approve");
+  return "";
 }
 
 function renderDistribution() {
@@ -807,8 +806,7 @@ function renderDistribution() {
       item.published_url ? `<a href="${esc(item.published_url)}" target="_blank" rel="noreferrer">Link</a>` : esc(formatDate(item.published_at)),
       esc(item.note),
       rowActions([
-        item.status !== "agendado" && item.status !== "publicado" ? miniButton("scheduleDistribution", item.id, "Agendar") : "",
-        item.status !== "publicado" ? miniButton("publishDistribution", item.id, "Publicado", "approve") : "",
+        item.status === "erro" ? miniButton("retryDistribution", item.id, "Reenviar", "approve") : "",
         miniButton("deleteRecord", item.id, "Excluir", "reject", "distribution")
       ])
     ])
@@ -1418,10 +1416,13 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "advanceContent") {
       const content = state.content.find((item) => item.id === id);
-      const next = columns[columns.indexOf(content.status) + 1];
-      const patch = { status: next || content.status };
+      const next = content.status === "Rascunho"
+        ? "Aprovacao"
+        : content.status === "Aprovacao"
+          ? "Agendado"
+          : content.status;
+      const patch = { status: next };
       if (next === "Agendado") patch.approved_at = new Date().toISOString();
-      if (next === "Publicado") patch.published_at = new Date().toISOString();
       await updateRecord("content", id, patch);
       const queued = next === "Agendado" ? await createDistributionQueueForContent({ ...content, ...patch }) : [];
       saveState();
@@ -1442,36 +1443,15 @@ document.addEventListener("click", async (event) => {
       render();
       toast("Conteudo voltou para revisao.");
     }
-    if (action === "scheduleDistribution") {
-      const task = state.distribution.find((item) => item.id === id);
+    if (action === "retryDistribution") {
       await updateRecord("distribution", id, {
-        status: "agendado",
-        scheduled_for: task.scheduled_for || new Date().toISOString(),
-        utm_url: task.utm_url || buildUtmUrl(task.published_url, task.utm_source, task.utm_medium, task.utm_campaign)
+        status: "fila",
+        buffer_post_id: null,
+        error_message: null
       });
       saveState();
       render();
-      toast("Distribuicao agendada.");
-    }
-    if (action === "publishDistribution") {
-      const task = state.distribution.find((item) => item.id === id);
-      const stamp = new Date().toISOString();
-      await updateRecord("distribution", id, {
-        status: "publicado",
-        published_at: stamp,
-        utm_url: task.utm_url || buildUtmUrl(task.published_url, task.utm_source, task.utm_medium, task.utm_campaign)
-      });
-      if (task.content_id) {
-        await updateRecord("content", task.content_id, {
-          status: "Publicado",
-          published_at: stamp,
-          published_url: task.published_url,
-          utm_url: task.utm_url || buildUtmUrl(task.published_url, task.utm_source, task.utm_medium, task.utm_campaign)
-        });
-      }
-      saveState();
-      render();
-      toast("Publicacao registrada.");
+      toast("Tarefa recolocada na fila do Buffer.");
     }
     if (action === "suggestReply") {
       const message = state.supportMessages.find((item) => item.id === id);

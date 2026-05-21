@@ -56,6 +56,7 @@ Depois que voce clicar em `Aprovar`, o dashboard cria a fila automaticamente:
 - Cada tarefa usa o `Buffer Channel ID` cadastrado na aba `Redes`.
 - Se nao houver horario especifico, o post entra na proxima vaga da fila do Buffer.
 - UTMs basicas sao preenchidas automaticamente.
+- Nao existe mais botao manual de `Publicado` na fila. Publicacao real precisa vir do Buffer, com `buffer_post_id`.
 
 ## Como eu vou automatizar a rotina
 
@@ -65,6 +66,15 @@ Depois que voce clicar em `Aprovar`, o dashboard cria a fila automaticamente:
 4. O GitHub Actions verifica a fila a cada 30 minutos e envia para o Buffer.
 5. O dashboard recebe `buffer_post_id` e marca a tarefa como `agendado`.
 6. Voce so volta a intervir se quiser rejeitar, pausar ou pedir ajuste.
+
+## O que ainda precisa para ficar automatico de verdade
+
+- `BUFFER_API_KEY` precisa estar configurado nos Secrets do GitHub.
+- O workflow `Buffer Publish` precisa rodar uma vez com `dry_run = 1` e depois com `dry_run = 0`.
+- A primeira execucao real precisa confirmar que o formato enviado para a API do Buffer esta aceito para cada rede.
+- Imagens precisam ter URL publica; hoje usamos GitHub Pages, depois podemos migrar para Supabase Storage ou AWS S3.
+- TikTok precisa de video, nao apenas imagem quadrada.
+- Status `Publicado` real ainda depende de sincronizar retorno/status do Buffer depois do agendamento.
 
 ## Referencias oficiais
 
