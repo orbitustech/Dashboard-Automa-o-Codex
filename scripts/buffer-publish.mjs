@@ -6,8 +6,8 @@ const LIMIT = Number(process.env.PUBLISH_LIMIT || 10);
 const DRY_RUN = process.env.DRY_RUN === "1";
 
 if (!BUFFER_API_KEY && !DRY_RUN) {
-  console.error("BUFFER_API_KEY nao configurado. Adicione o segredo no GitHub Actions antes de rodar.");
-  process.exit(1);
+  console.warn("BUFFER_API_KEY nao configurado. Nada sera publicado ate o segredo existir no GitHub Actions.");
+  process.exit(0);
 }
 
 async function supabase(path, options = {}) {

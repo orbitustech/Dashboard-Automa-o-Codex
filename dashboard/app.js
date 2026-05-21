@@ -771,6 +771,7 @@ function renderContent() {
             <div class="row-actions">
               ${riskChip(item.risk)}
               ${nextContentButton(item)}
+              ${item.status === "Aprovacao" ? miniButton("rejectContent", item.id, "Rejeitar", "reject") : ""}
               ${miniButton("deleteRecord", item.id, "Excluir", "reject", "content")}
             </div>
           </article>
@@ -1143,6 +1144,62 @@ function distributionPayload(data) {
   };
 }
 
+function socialUtmSource(channel) {
+  return String(channel || "social")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "social";
+}
+
+function campaignNameFor(content) {
+  const date = new Date();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${socialUtmSource(siteName(content.site_id))}_${date.getFullYear()}_${month}`;
+}
+
+async function createDistributionQueueForContent(content) {
+  const targets = state.socials.filter((social) =>
+    social.site_id === content.site_id &&
+    social.status === "ativo" &&
+    social.buffer_channel_id
+  );
+  const createdItems = [];
+
+  for (const target of targets) {
+    const alreadyQueued = state.distribution.some((task) =>
+      task.content_id === content.id &&
+      task.buffer_channel_id === target.buffer_channel_id &&
+      task.status !== "erro"
+    );
+    if (alreadyQueued) continue;
+
+    const publishedUrl = content.published_url || "";
+    const utmSource = socialUtmSource(target.channel);
+    const created = await createRecord("distribution", {
+      site_id: content.site_id,
+      content_id: content.id,
+      target: target.channel,
+      buffer_channel_id: target.buffer_channel_id,
+      status: "fila",
+      scheduled_for: content.scheduled_for || null,
+      published_at: null,
+      published_url: publishedUrl,
+      utm_source: utmSource,
+      utm_medium: "social",
+      utm_campaign: campaignNameFor(content),
+      utm_url: buildUtmUrl(publishedUrl, utmSource, "social", campaignNameFor(content)),
+      note: `Gerado automaticamente apos aprovacao. Perfil: ${target.handle || target.channel}`
+    });
+    state.distribution = [created, ...state.distribution.filter((item) => item.id !== created.id)];
+    createdItems.push(created);
+  }
+
+  return createdItems;
+}
+
 function koinMetricPayload(data) {
   return {
     site_id: requireSite(data),
@@ -1347,9 +1404,24 @@ document.addEventListener("click", async (event) => {
       if (next === "Agendado") patch.approved_at = new Date().toISOString();
       if (next === "Publicado") patch.published_at = new Date().toISOString();
       await updateRecord("content", id, patch);
+      const queued = next === "Agendado" ? await createDistributionQueueForContent({ ...content, ...patch }) : [];
       saveState();
       render();
-      toast("Conteudo avancou na esteira.");
+      const message = next === "Agendado"
+        ? queued.length
+          ? `Conteudo aprovado: ${queued.length} tarefas criadas para Buffer.`
+          : "Conteudo aprovado, mas nenhuma nova tarefa Buffer foi criada."
+        : "Conteudo avancou na esteira.";
+      toast(message);
+    }
+    if (action === "rejectContent") {
+      await updateRecord("content", id, {
+        status: "Rascunho",
+        next_action: "Revisar conteudo rejeitado"
+      });
+      saveState();
+      render();
+      toast("Conteudo voltou para revisao.");
     }
     if (action === "scheduleDistribution") {
       const task = state.distribution.find((item) => item.id === id);

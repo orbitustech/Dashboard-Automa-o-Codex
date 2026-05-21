@@ -1,10 +1,12 @@
 # Plano AWS para Automacao KoinOps
 
-Data: 2026-05-20
+Data: 2026-05-21
 
 ## Resumo curto
 
 A AWS pode ser usada como infraestrutura de execucao, agendamento, logs, filas, segredos e notificacoes. Ela nao substitui as APIs das redes sociais, CMS, analytics ou sistema de Koins. Para publicar de verdade, cada plataforma ainda precisa liberar token, escopo e permissao.
+
+Para o fluxo atual de redes sociais, AWS nao e necessaria. GitHub Actions + Supabase + Buffer ja conseguem cobrir o MVP: Codex cria conteudo, voce aprova no dashboard, o dashboard gera a fila e o workflow envia ao Buffer. A AWS entra quando precisarmos de mais confiabilidade, logs centralizados, filas, arquivos de midia ou automacoes 24/7 mais robustas.
 
 ## Papel da AWS
 
@@ -75,6 +77,19 @@ Nao envie senha no chat. Eu preciso apenas das referencias no cofre e dos nomes 
 | Koins | Origem dos dados: API, banco, painel ou export CSV. |
 
 ## Primeira arquitetura recomendada
+
+Para agora, manter simples:
+
+```txt
+Codex
+  -> Supabase content_items
+  -> Voce aprova no dashboard
+  -> distribution_tasks automaticas
+  -> GitHub Actions a cada 30 min
+  -> Buffer
+```
+
+Quando migrar para AWS:
 
 ```txt
 EventBridge Scheduler

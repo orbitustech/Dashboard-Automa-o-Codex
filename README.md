@@ -32,7 +32,7 @@ Depois acesse `http://127.0.0.1:8765`.
 - `Sites`: cadastre cada projeto e mantenha apenas a referencia do cofre, nunca a senha.
 - `Redes`: registre os perfis oficiais de cada site e acompanhe cadencia, posts, cliques, crescimento e proxima acao.
 - `Automacoes`: cadastre rotinas que o Codex ou integracoes externas vao executar. Use `Rodar` para registrar uma execucao manual e `Pausar` quando a rotina precisar de revisao.
-- `Conteudo`: acompanhe tarefas editoriais em kanban. O botao `Avancar` move o item pela esteira ate `Publicado`. A fila de distribuicao registra destino, agendamento, UTM e link publicado.
+- `Conteudo`: acompanhe tarefas editoriais em kanban. Ao aprovar um item, o dashboard cria automaticamente uma tarefa de Buffer para cada rede ativa do site.
 - `Koins`: registre uma leitura atual dos saldos e cadastre premios com custo, estoque, resgates e status.
 - `Aprovacoes`: envie decisoes sensiveis para fila humana, como campanhas, premios, respostas de suporte ou mudancas de regras.
 - `Suporte`: classifique mensagens por tema, gere uma resposta sugerida, marque como respondida e transforme perguntas repetidas em FAQ.
@@ -59,7 +59,7 @@ scripts/buffer-publish.mjs
 .github/workflows/buffer-list-channels.yml
 ```
 
-Para ativar, crie no GitHub Actions o segredo `BUFFER_API_KEY` com a chave salva no 1Password. Depois rode o workflow `Buffer Publish` primeiro com `dry_run = 1`.
+Para ativar, crie no GitHub Actions o segredo `BUFFER_API_KEY` com a chave salva no 1Password. O workflow `Buffer Publish` roda manualmente e tambem a cada 30 minutos; antes do primeiro envio real, rode uma vez com `dry_run = 1`.
 
 ## Supabase
 
