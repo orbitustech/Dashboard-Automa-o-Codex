@@ -8,7 +8,7 @@ Este arquivo deixa a publicacao social pronta para rodar sem guardar senha no re
 - O dashboard permite cadastrar `Buffer Channel ID`, texto do post e URL de midia.
 - Ao aprovar um conteudo, o dashboard cria automaticamente uma tarefa de distribuicao para cada rede ativa com `Buffer Channel ID`.
 - O script `scripts/buffer-publish.mjs` busca a fila em `distribution_tasks` e cria posts no Buffer.
-- O GitHub Actions `.github/workflows/buffer-publish.yml` roda o publicador manualmente e tambem a cada 30 minutos.
+- O GitHub Actions `.github/workflows/buffer-publish.yml` roda o publicador manualmente e tambem a cada 5 minutos.
 - O GitHub Actions `.github/workflows/buffer-list-channels.yml` lista os canais conectados no Buffer.
 - O script `scripts/buffer-list-channels.mjs` lista os canais conectados no Buffer quando a chave estiver disponivel.
 
@@ -63,7 +63,7 @@ Depois que voce clicar em `Aprovar`, o dashboard cria a fila automaticamente:
 1. Eu crio o calendario e os rascunhos no dashboard.
 2. Voce aprova ou pede ajuste.
 3. O clique de aprovacao cria a fila para Instagram, Threads, TikTok etc.
-4. O GitHub Actions verifica a fila a cada 30 minutos e envia para o Buffer.
+4. O GitHub Actions verifica a fila a cada 5 minutos e envia para o Buffer.
 5. O dashboard recebe `buffer_post_id` e marca a tarefa como `agendado`.
 6. Voce so volta a intervir se quiser rejeitar, pausar ou pedir ajuste.
 

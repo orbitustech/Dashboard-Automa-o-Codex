@@ -59,7 +59,7 @@ scripts/buffer-publish.mjs
 .github/workflows/buffer-list-channels.yml
 ```
 
-Para ativar, crie no GitHub Actions o segredo `BUFFER_API_KEY` com a chave salva no 1Password. O workflow `Buffer Publish` roda manualmente e tambem a cada 30 minutos; antes do primeiro envio real, rode uma vez com `dry_run = 1`.
+Para ativar, crie no GitHub Actions o segredo `BUFFER_API_KEY` com a chave salva no 1Password. O workflow `Buffer Publish` roda manualmente e tambem a cada 5 minutos; antes do primeiro envio real, rode uma vez com `dry_run = 1`.
 
 ## Supabase
 
