@@ -32,6 +32,32 @@ KOINOPS_ALLOWED_ORIGIN=https://nicolasorbithustech.github.io
 
 `SUPABASE_SERVICE_ROLE_KEY` fica somente no backend. Nunca coloque essa chave no dashboard, no GitHub Pages ou no chat.
 
+## Deploy atual
+
+O projeto foi criado na Vercel em:
+
+```txt
+Team: koinops-nicolas
+Projeto: tenho-5-sites-e-contas-em
+URL de producao: https://tenho-5-sites-e-contas-em.vercel.app
+```
+
+Variaveis ja configuradas:
+
+```txt
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_STORAGE_BUCKET
+```
+
+Variaveis que ainda precisam ser adicionadas por voce, usando o 1Password:
+
+```txt
+KOINOPS_ADMIN_TOKEN
+BUFFER_API_KEY
+SUPABASE_SERVICE_ROLE_KEY
+```
+
 ## Como conectar no dashboard
 
 1. Abra `Governanca`.

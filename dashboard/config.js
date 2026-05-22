@@ -6,5 +6,5 @@ window.KOINOPS_SUPABASE = {
 window.KOINOPS_BACKEND = {
   // Se publicar no Vercel, coloque aqui a URL do projeto. Ex:
   // baseUrl: "https://seu-projeto.vercel.app"
-  baseUrl: ""
+  baseUrl: "https://tenho-5-sites-e-contas-em.vercel.app"
 };
