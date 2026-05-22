@@ -290,6 +290,8 @@
             <label class="field"><span>Canal</span><input name="channel" placeholder="Blog, Instagram, email..." /></label>
             <label class="field wide-field"><span>Texto do post</span><textarea name="body" placeholder="Legenda/copy que sera enviada para a rede social"></textarea></label>
             <label class="field"><span>Midia URL</span><input name="asset_url" placeholder="https://imagem-ou-video..." /></label>
+            <label class="field wide-field"><span>Prompt de melhoria</span><textarea name="improvement_prompt" placeholder="Ex: refazer imagem menos generica, mais premium, com menos texto e mais cara de rede social"></textarea></label>
+            <label class="field wide-field"><span>Notas da revisao</span><textarea name="revision_notes" placeholder="Historico curto do que foi pedido, aprovado ou rejeitado"></textarea></label>
             <label class="field">
               <span>Status</span>
               <select name="status">
@@ -312,6 +314,7 @@
             <button class="primary-btn form-submit" type="submit">
               <svg><use href="#icon-plus"></use></svg><span>Adicionar</span>
             </button>
+            <button class="secondary-btn form-submit" id="cancelContentEditBtn" type="button" hidden>Cancelar edicao</button>
           </form>
           <div id="contentBoard" class="kanban"></div>
           <div class="section-head compact-head">

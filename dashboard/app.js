@@ -41,6 +41,7 @@ const tableConfig = {
 let state = loadState();
 let currentView = "overview";
 let syncMode = "local";
+let editingContentId = null;
 let filters = {
   siteId: "all",
   search: ""
@@ -219,6 +220,8 @@ function normalizeContent(items) {
     published_url: item.published_url || "",
     utm_url: item.utm_url || "",
     next_action: item.next_action || item.nextAction || "",
+    improvement_prompt: item.improvement_prompt || item.improvementPrompt || "",
+    revision_notes: item.revision_notes || item.revisionNotes || "",
     created_at: item.created_at || null,
     updated_at: item.updated_at || null
   }));
@@ -768,12 +771,15 @@ function renderContent() {
           <article class="content-item" data-risk="${esc(item.risk)}">
             <h5>${esc(item.title)}</h5>
             <p>${esc(siteName(item.site_id))} - ${esc(item.channel || "sem canal")} - vence ${esc(formatShortDate(item.due_date))}</p>
+            ${item.asset_url ? `<a class="content-media" href="${esc(item.asset_url)}" target="_blank" rel="noreferrer"><img src="${esc(item.asset_url)}" alt="Midia de ${esc(item.title)}" loading="lazy"></a>` : ""}
             ${item.body ? `<p>${esc(item.body.slice(0, 180))}${item.body.length > 180 ? "..." : ""}</p>` : ""}
-            ${item.asset_url ? `<p><a href="${esc(item.asset_url)}" target="_blank" rel="noreferrer">Midia</a></p>` : ""}
+            ${item.improvement_prompt ? `<p class="improvement-note"><strong>Melhorar:</strong> ${esc(item.improvement_prompt.slice(0, 220))}${item.improvement_prompt.length > 220 ? "..." : ""}</p>` : ""}
+            ${item.revision_notes ? `<p class="revision-note"><strong>Revisao:</strong> ${esc(item.revision_notes.slice(0, 180))}${item.revision_notes.length > 180 ? "..." : ""}</p>` : ""}
             <p>${esc(item.next_action || "Sem proxima acao")}</p>
             ${item.published_url ? `<p><a href="${esc(item.published_url)}" target="_blank" rel="noreferrer">Publicado</a></p>` : ""}
             <div class="row-actions">
               ${riskChip(item.risk)}
+              ${miniButton("editContent", item.id, "Editar")}
               ${nextContentButton(item)}
               ${item.status === "Aprovacao" ? miniButton("rejectContent", item.id, "Rejeitar", "reject") : ""}
               ${miniButton("deleteRecord", item.id, "Excluir", "reject", "content")}
@@ -1120,8 +1126,71 @@ function contentPayload(data) {
     status: formString(data, "status", "Rascunho"),
     risk: formString(data, "risk", "baixo"),
     due_date: formString(data, "due_date") || null,
-    next_action: formString(data, "next_action")
+    next_action: formString(data, "next_action"),
+    improvement_prompt: formString(data, "improvement_prompt"),
+    revision_notes: formString(data, "revision_notes")
   };
+}
+
+function setContentFormMode(contentId = null) {
+  editingContentId = contentId;
+  const form = qs("#contentForm");
+  const submitLabel = qs("#contentForm .primary-btn span");
+  const cancel = qs("#cancelContentEditBtn");
+  if (submitLabel) submitLabel.textContent = contentId ? "Salvar edicao" : "Adicionar";
+  if (cancel) cancel.hidden = !contentId;
+  form.dataset.editingId = contentId || "";
+}
+
+function resetContentForm() {
+  const form = qs("#contentForm");
+  form.reset();
+  setContentFormMode(null);
+  renderFormSiteSelects();
+}
+
+function editContent(contentId) {
+  const content = state.content.find((item) => item.id === contentId);
+  if (!content) throw new Error("Conteudo nao encontrado.");
+  switchView("content");
+  renderFormSiteSelects();
+  const form = qs("#contentForm");
+  form.elements.site_id.value = content.site_id || "";
+  form.elements.title.value = content.title || "";
+  form.elements.channel.value = content.channel || "";
+  form.elements.body.value = content.body || "";
+  form.elements.asset_url.value = content.asset_url || "";
+  form.elements.improvement_prompt.value = content.improvement_prompt || "";
+  form.elements.revision_notes.value = content.revision_notes || "";
+  form.elements.status.value = content.status || "Rascunho";
+  form.elements.risk.value = content.risk || "baixo";
+  form.elements.due_date.value = content.due_date || "";
+  form.elements.next_action.value = content.next_action || "";
+  setContentFormMode(contentId);
+  form.elements.title.focus();
+}
+
+async function saveContent(form) {
+  const data = new FormData(form);
+  try {
+    const payload = contentPayload(data);
+    if (editingContentId) {
+      await updateRecord("content", editingContentId, payload);
+      saveState();
+      resetContentForm();
+      render();
+      toast("Conteudo atualizado.");
+      return;
+    }
+    const created = await createRecord("content", payload);
+    state.content = [created, ...state.content.filter((item) => item.id !== created.id)];
+    saveState();
+    resetContentForm();
+    render();
+    toast(syncMode === "supabase" ? "Conteudo salvo no Supabase." : "Conteudo salvo no modo local.");
+  } catch (error) {
+    toast(error.message);
+  }
 }
 
 function distributionPayload(data) {
@@ -1414,6 +1483,10 @@ document.addEventListener("click", async (event) => {
       render();
       toast("Execucao registrada.");
     }
+    if (action === "editContent") {
+      editContent(id);
+      toast("Editando conteudo.");
+    }
     if (action === "advanceContent") {
       const content = state.content.find((item) => item.id === id);
       const next = content.status === "Rascunho"
@@ -1521,8 +1594,10 @@ qs("#automationForm").addEventListener("submit", (event) => {
 
 qs("#contentForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "content", contentPayload, "Conteudo");
+  saveContent(event.currentTarget);
 });
+
+qs("#cancelContentEditBtn").addEventListener("click", resetContentForm);
 
 qs("#distributionForm").addEventListener("submit", (event) => {
   event.preventDefault();

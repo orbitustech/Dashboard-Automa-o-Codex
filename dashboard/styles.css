@@ -671,6 +671,40 @@ button {
   font-size: 12px;
 }
 
+.content-media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  margin: 8px 0 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #eef4f6;
+}
+
+.content-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.improvement-note,
+.revision-note {
+  padding: 8px;
+  border-radius: var(--radius);
+  background: rgba(245, 183, 64, 0.13);
+}
+
+.revision-note {
+  background: rgba(17, 132, 118, 0.1);
+}
+
+.improvement-note strong,
+.revision-note strong {
+  color: var(--slate);
+}
+
 .row-actions {
   display: flex;
   gap: 8px;

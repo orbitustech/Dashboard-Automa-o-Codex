@@ -44,6 +44,7 @@ Depois acesse `http://127.0.0.1:8765`.
 - `DIAGNOSTICO_AUTOMACAO.md`: mostra o que falta, o que ja foi feito e quais integracoes precisam da sua intervencao.
 - `operacao/PROMPTS_CODEX.md`: prompts fixos para auditoria, conteudo, risco, relatorio e FAQ.
 - `operacao/FLUXO_CONTEUDO_CODEX.md`: fluxo onde Codex cria, voce aprova e a automacao publica/agenda.
+- `operacao/FLUXO_MELHORIA_POSTS.md`: como pedir ajustes de texto/imagem pelo campo `Prompt de melhoria`.
 - `operacao/CHECKLIST_ACEITE.md`: criterios de aceite antes de publicar, responder ou registrar automacoes.
 - `operacao/_template_site`: modelo para criar uma pasta de contexto para cada site real.
 - `AWS_AUTOMACAO_PLANO.md`: como usar AWS para rodar automacoes, guardar segredos, agendar tarefas e enviar alertas.

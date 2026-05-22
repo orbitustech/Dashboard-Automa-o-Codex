@@ -67,6 +67,18 @@ Depois que voce clicar em `Aprovar`, o dashboard cria a fila automaticamente:
 5. O dashboard recebe `buffer_post_id` e marca a tarefa como `agendado`.
 6. Voce so volta a intervir se quiser rejeitar, pausar ou pedir ajuste.
 
+## Como pedir ajuste sem sair do fluxo
+
+Na aba `Conteudo`, clique em `Editar` no post e preencha `Prompt de melhoria`.
+
+Exemplo:
+
+```txt
+Imagem ficou generica. Refazer com menos texto, mais cara de post social moderno, mais foco em premio e Koins, evitando card branco grande.
+```
+
+Depois eu leio esse prompt, refaco texto/midia, atualizo o item e devolvo para `Aprovacao`.
+
 ## O que ainda precisa para ficar automatico de verdade
 
 - `BUFFER_API_KEY` precisa estar configurado nos Secrets do GitHub.
