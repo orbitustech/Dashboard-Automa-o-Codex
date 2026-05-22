@@ -48,13 +48,13 @@ Variaveis ja configuradas:
 SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_STORAGE_BUCKET
+BUFFER_API_KEY
 ```
 
 Variaveis que ainda precisam ser adicionadas por voce, usando o 1Password:
 
 ```txt
 KOINOPS_ADMIN_TOKEN
-BUFFER_API_KEY
 SUPABASE_SERVICE_ROLE_KEY
 ```
 
