@@ -11,7 +11,7 @@ Obrigatoria:
 Opcionais:
 
 - `OPENAI_TEXT_MODEL`: modelo de texto. Padrao: `gpt-5.2`.
-- `OPENAI_IMAGE_MODEL`: modelo de imagem. Padrao: `gpt-image-2`.
+- `OPENAI_IMAGE_MODEL`: modelo de imagem. Padrao: `gpt-image-2.0`.
 
 ## Como usar no dashboard
 
