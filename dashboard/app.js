@@ -488,6 +488,7 @@ function generationInput(form) {
     prompt: form.elements.ai_prompt?.value || form.elements.improvement_prompt?.value || "",
     improvementPrompt: form.elements.improvement_prompt?.value || "",
     image_prompt: form.elements.improvement_prompt?.value || form.elements.body?.value || "",
+    imageText: form.elements.image_text?.value || "",
     style: form.elements.image_style?.value || "",
     size: form.elements.image_size?.value || "1024x1536",
     quality: form.elements.image_quality?.value || "medium"
