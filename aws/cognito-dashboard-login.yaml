@@ -20,8 +20,6 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Ref UserPoolName
-      AutoVerifiedAttributes:
-        - email
       UsernameAttributes:
         - email
       AccountRecoverySetting:
@@ -29,7 +27,7 @@ Resources:
           - Name: verified_email
             Priority: 1
       AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true
+        AllowAdminCreateUserOnly: false
       Policies:
         PasswordPolicy:
           MinimumLength: 12

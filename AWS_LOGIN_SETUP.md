@@ -5,6 +5,8 @@ Este repositorio ja esta preparado para login com Amazon Cognito usando Authoriz
 ## O que eu ja deixei pronto
 
 - O dashboard tem uma area em `Governanca > Login AWS Cognito`.
+- O dashboard exige login AWS antes de mostrar qualquer aba operacional.
+- A tela inicial tem `Entrar com AWS` e `Criar conta`.
 - O navegador faz o login pelo Hosted UI do Cognito.
 - O backend pode validar JWT do Cognito quando `AWS_COGNITO_ISSUER` e `AWS_COGNITO_CLIENT_ID` estiverem na Vercel.
 - A chave antiga `KOINOPS_ADMIN_TOKEN` continua funcionando como fallback administrativo.
@@ -22,15 +24,26 @@ Este repositorio ja esta preparado para login com Amazon Cognito usando Authoriz
    - `UserPoolClientId`
    - `Issuer`
 
+## Como deixar cadastro pendente de aprovacao
+
+No User Pool do Cognito:
+
+1. Abra `Authentication > Sign-up`.
+2. Deixe `Self-service sign-up` ativo para aparecer a opcao de criar conta.
+3. Nao use auto-confirmacao por Lambda.
+4. Para aprovacao manual, confirme usuarios em `Users > Actions > Confirm` quando quiser liberar acesso.
+
+Pela documentacao da AWS, usuarios criados por self sign-up precisam ser confirmados antes de entrar. Voce pode confirmar pelo console ou pela API/CLI `AdminConfirmSignUp`.
+
 ## O que configurar no dashboard
 
 Na aba `Governanca > Login AWS Cognito`:
 
-- marque `Exigir login AWS neste navegador`
+- `Exigir login AWS ao abrir o dashboard` ja fica obrigatorio no codigo publicado
 - cole `HostedUiDomain` em `Dominio Cognito`
 - cole `UserPoolClientId` em `Client ID`
 - confirme as URLs de callback/logout
-- salve e clique em `Entrar`
+- salve e clique em `Entrar` ou `Criar conta`
 
 ## O que configurar na Vercel
 

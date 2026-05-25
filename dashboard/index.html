@@ -72,17 +72,18 @@
         <div class="brand-mark">K</div>
         <p class="eyebrow">Login AWS</p>
         <h1>Entrar no Dashboard Redes Automatico</h1>
-        <p>Use o acesso da empresa para abrir o painel. A aprovacao de posts continua manual antes de publicar.</p>
+        <p>Entre com uma conta aprovada no Cognito. Se ainda nao tiver acesso, crie a conta e aguarde a aprovacao no AWS.</p>
         <div class="row-actions">
           <button class="primary-btn" id="awsGateLoginBtn" type="button">
             <svg><use href="#icon-play"></use></svg><span>Entrar com AWS</span>
           </button>
-          <button class="secondary-btn" id="disableAuthBtn" type="button">Desativar neste navegador</button>
+          <button class="secondary-btn" id="awsGateSignupBtn" type="button">Criar conta</button>
         </div>
+        <p class="muted">Contas novas ficam pendentes ate um administrador confirmar no Cognito.</p>
       </div>
     </section>
 
-    <div class="app-shell">
+    <div class="app-shell" hidden>
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">K</div>
@@ -661,7 +662,7 @@
                 <span class="muted">Acesso do operador ao dashboard</span>
               </div>
               <form id="authSettingsForm" class="settings-form" autocomplete="off">
-                <label class="toggle-row"><input name="auth_enabled" type="checkbox" /> <span>Exigir login AWS neste navegador</span></label>
+                <label class="toggle-row"><input name="auth_enabled" type="checkbox" /> <span>Exigir login AWS ao abrir o dashboard</span></label>
                 <label class="field"><span>Dominio Cognito</span><input name="cognito_domain" placeholder="https://seu-dominio.auth.us-east-1.amazoncognito.com" /></label>
                 <label class="field"><span>Client ID</span><input name="client_id" placeholder="App client ID sem secret" /></label>
                 <label class="field"><span>Callback URL</span><input name="redirect_uri" placeholder="https://dashboard-redes-automatico.vercel.app/dashboard/" /></label>
@@ -669,12 +670,13 @@
                 <label class="field"><span>Scopes</span><input name="scopes" placeholder="openid email profile" /></label>
                 <div class="row-actions">
                   <button class="secondary-btn" type="submit">Salvar login</button>
+                  <button class="secondary-btn" id="settingsSignupBtn" type="button">Criar conta</button>
                   <button class="primary-btn" id="settingsLoginBtn" type="button">
                     <svg><use href="#icon-play"></use></svg><span>Entrar</span>
                   </button>
                 </div>
               </form>
-              <p class="muted">Depois de criar o User Pool na AWS, cole aqui o dominio e o Client ID. O backend tambem pode validar o JWT se voce configurar AWS_COGNITO_ISSUER e AWS_COGNITO_CLIENT_ID na Vercel.</p>
+              <p class="muted">O login esta configurado para abrir antes do painel. Novas contas devem ser confirmadas no Cognito antes de acessar.</p>
             </div>
           </div>
           <button class="secondary-btn" id="resetBtn">Limpar cache local</button>

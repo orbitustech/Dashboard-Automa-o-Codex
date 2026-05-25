@@ -10,7 +10,9 @@ window.KOINOPS_BACKEND = {
 };
 
 window.KOINOPS_AUTH = {
-  enabled: false,
+  enabled: true,
+  forceLogin: true,
+  signupEnabled: true,
   provider: "aws-cognito",
   cognitoDomain: "https://koinops-nicolas-sandbox.auth.us-east-2.amazoncognito.com",
   clientId: "3035tmlje9mph30ngbbdl75p00",

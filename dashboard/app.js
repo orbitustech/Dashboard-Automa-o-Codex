@@ -187,8 +187,11 @@ function currentAuthConfig() {
     saved = {};
   }
   const hasSavedEnabled = Object.prototype.hasOwnProperty.call(saved, "enabled");
+  const forceLogin = Boolean(authDefaults.forceLogin);
   return {
-    enabled: hasSavedEnabled ? Boolean(saved.enabled) : Boolean(authDefaults.enabled),
+    enabled: forceLogin ? true : (hasSavedEnabled ? Boolean(saved.enabled) : Boolean(authDefaults.enabled)),
+    forceLogin,
+    signupEnabled: authDefaults.signupEnabled !== false,
     provider: "aws-cognito",
     cognitoDomain: normalizeAuthDomain(saved.cognitoDomain || authDefaults.cognitoDomain),
     clientId: String(saved.clientId || authDefaults.clientId || "").trim(),
@@ -203,7 +206,7 @@ function authConfigReady(config = currentAuthConfig()) {
 }
 
 function authRequired(config = currentAuthConfig()) {
-  return Boolean(config.enabled && authConfigReady(config));
+  return Boolean((config.forceLogin || config.enabled) && authConfigReady(config));
 }
 
 function decodeJwtPayload(token) {
@@ -254,6 +257,14 @@ async function sha256Base64Url(value) {
 }
 
 async function startAwsLogin() {
+  await startAwsAuthFlow("oauth2/authorize");
+}
+
+async function startAwsSignup() {
+  await startAwsAuthFlow("signup");
+}
+
+async function startAwsAuthFlow(path) {
   const config = currentAuthConfig();
   if (!authConfigReady(config)) {
     switchView("settings");
@@ -276,7 +287,7 @@ async function startAwsLogin() {
     state: stateValue
   });
 
-  window.location.assign(`${config.cognitoDomain}/oauth2/authorize?${params.toString()}`);
+  window.location.assign(`${config.cognitoDomain}/${path}?${params.toString()}`);
 }
 
 async function finishAwsLoginIfNeeded() {
@@ -341,6 +352,10 @@ function logoutAws() {
 
 function disableLocalAuth() {
   const config = currentAuthConfig();
+  if (config.forceLogin) {
+    toast("Login AWS obrigatorio neste dashboard.");
+    return;
+  }
   localStorage.setItem(AUTH_CONFIG_KEY, JSON.stringify({
     ...config,
     enabled: false
@@ -362,6 +377,7 @@ function renderAuth() {
   const authStatus = qs("#authStatus");
   const loginBtn = qs("#loginBtn");
   const logoutBtn = qs("#logoutBtn");
+  const signupBtns = qsa("#awsGateSignupBtn, #settingsSignupBtn");
 
   if (authStatus) {
     authStatus.textContent = ready ? (session ? label : (required ? "Login AWS ativo" : "Login AWS configurado")) : "Login AWS pendente";
@@ -369,6 +385,9 @@ function renderAuth() {
   }
   if (loginBtn) loginBtn.hidden = !ready || Boolean(session);
   if (logoutBtn) logoutBtn.hidden = !session;
+  signupBtns.forEach((button) => {
+    button.hidden = !ready || !config.signupEnabled || Boolean(session);
+  });
 
   if (!authGate || !appShell) return;
   if (required && !session) {
@@ -1378,6 +1397,7 @@ function renderAuthSettings() {
   if (document.activeElement && form.contains(document.activeElement)) return;
   const config = currentAuthConfig();
   form.elements.auth_enabled.checked = config.enabled;
+  form.elements.auth_enabled.disabled = config.forceLogin;
   form.elements.cognito_domain.value = config.cognitoDomain;
   form.elements.client_id.value = config.clientId;
   form.elements.redirect_uri.value = config.redirectUri;
@@ -2139,8 +2159,9 @@ qs("#backendSettingsForm").addEventListener("submit", (event) => {
 qs("#authSettingsForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
+  const currentConfig = currentAuthConfig();
   localStorage.setItem(AUTH_CONFIG_KEY, JSON.stringify({
-    enabled: data.get("auth_enabled") === "on",
+    enabled: currentConfig.forceLogin ? true : data.get("auth_enabled") === "on",
     cognitoDomain: normalizeAuthDomain(formString(data, "cognito_domain")),
     clientId: formString(data, "client_id"),
     redirectUri: formString(data, "redirect_uri") || `${window.location.origin}${window.location.pathname}`,
@@ -2169,7 +2190,9 @@ qs("#loginBtn").addEventListener("click", () => startAwsLogin().catch((error) =>
 qs("#logoutBtn").addEventListener("click", logoutAws);
 qs("#settingsLoginBtn").addEventListener("click", () => startAwsLogin().catch((error) => toast(error.message)));
 qs("#awsGateLoginBtn").addEventListener("click", () => startAwsLogin().catch((error) => toast(error.message)));
-qs("#disableAuthBtn").addEventListener("click", disableLocalAuth);
+qs("#settingsSignupBtn")?.addEventListener("click", () => startAwsSignup().catch((error) => toast(error.message)));
+qs("#awsGateSignupBtn")?.addEventListener("click", () => startAwsSignup().catch((error) => toast(error.message)));
+qs("#disableAuthBtn")?.addEventListener("click", disableLocalAuth);
 qs("#publishNowBtn").addEventListener("click", () => {
   publishQueueNow().catch((error) => {
     updateBackendStatus("Backend com erro", "risk");
