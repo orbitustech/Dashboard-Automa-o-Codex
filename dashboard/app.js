@@ -1,8 +1,13 @@
 const STORAGE_KEY = "koinops-dashboard-v3";
 const BACKEND_URL_KEY = "koinops-backend-url";
 const BACKEND_TOKEN_KEY = "koinops-backend-token";
+const AUTH_CONFIG_KEY = "koinops-auth-config";
+const AUTH_SESSION_KEY = "koinops-auth-session";
+const AUTH_VERIFIER_KEY = "koinops-auth-verifier";
+const AUTH_STATE_KEY = "koinops-auth-state";
 const supabaseConfig = window.KOINOPS_SUPABASE || {};
 const backendConfig = window.KOINOPS_BACKEND || {};
+const authDefaults = window.KOINOPS_AUTH || {};
 
 const seedData = {
   sites: [],
@@ -168,6 +173,203 @@ function backendToken() {
   return localStorage.getItem(BACKEND_TOKEN_KEY) || "";
 }
 
+function normalizeAuthDomain(value) {
+  const domain = String(value || "").trim().replace(/\/+$/, "");
+  if (!domain) return "";
+  return /^https?:\/\//i.test(domain) ? domain : `https://${domain}`;
+}
+
+function currentAuthConfig() {
+  let saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(AUTH_CONFIG_KEY) || "{}");
+  } catch {
+    saved = {};
+  }
+  return {
+    enabled: Boolean(authDefaults.enabled || saved.enabled),
+    provider: "aws-cognito",
+    cognitoDomain: normalizeAuthDomain(saved.cognitoDomain || authDefaults.cognitoDomain),
+    clientId: String(saved.clientId || authDefaults.clientId || "").trim(),
+    redirectUri: String(saved.redirectUri || authDefaults.redirectUri || `${window.location.origin}${window.location.pathname}`).trim(),
+    logoutUri: String(saved.logoutUri || authDefaults.logoutUri || `${window.location.origin}${window.location.pathname}`).trim(),
+    scopes: String(saved.scopes || authDefaults.scopes || "openid email profile").trim()
+  };
+}
+
+function authConfigComplete(config = currentAuthConfig()) {
+  return Boolean(config.enabled && config.cognitoDomain && config.clientId && config.redirectUri);
+}
+
+function decodeJwtPayload(token) {
+  try {
+    const [, payload] = String(token || "").split(".");
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return JSON.parse(decodeURIComponent(escape(atob(padded))));
+  } catch {
+    return {};
+  }
+}
+
+function authSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || "{}");
+    if (!session.id_token && !session.access_token) return null;
+    if (session.expires_at && session.expires_at <= Date.now()) return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+function backendAuthToken() {
+  const adminToken = backendToken();
+  if (adminToken) return adminToken;
+  const session = authSession();
+  return session?.access_token || session?.id_token || "";
+}
+
+function base64Url(bytes) {
+  const chunk = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
+  let binary = "";
+  for (const byte of chunk) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function randomCode(size = 32) {
+  const bytes = new Uint8Array(size);
+  crypto.getRandomValues(bytes);
+  return base64Url(bytes);
+}
+
+async function sha256Base64Url(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return base64Url(digest);
+}
+
+async function startAwsLogin() {
+  const config = currentAuthConfig();
+  if (!authConfigComplete(config)) {
+    switchView("settings");
+    toast("Complete os dados do AWS Cognito em Governanca.");
+    return;
+  }
+
+  const verifier = randomCode(64);
+  const stateValue = randomCode(24);
+  sessionStorage.setItem(AUTH_VERIFIER_KEY, verifier);
+  sessionStorage.setItem(AUTH_STATE_KEY, stateValue);
+
+  const params = new URLSearchParams({
+    client_id: config.clientId,
+    response_type: "code",
+    scope: config.scopes,
+    redirect_uri: config.redirectUri,
+    code_challenge_method: "S256",
+    code_challenge: await sha256Base64Url(verifier),
+    state: stateValue
+  });
+
+  window.location.assign(`${config.cognitoDomain}/oauth2/authorize?${params.toString()}`);
+}
+
+async function finishAwsLoginIfNeeded() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (!code) return false;
+
+  const config = currentAuthConfig();
+  const stateValue = params.get("state");
+  const expectedState = sessionStorage.getItem(AUTH_STATE_KEY);
+  const verifier = sessionStorage.getItem(AUTH_VERIFIER_KEY);
+
+  if (!authConfigComplete(config) || !verifier || (expectedState && expectedState !== stateValue)) {
+    toast("Login AWS recusado. Confira a configuracao do Cognito.");
+    return true;
+  }
+
+  try {
+    const response = await fetch(`${config.cognitoDomain}/oauth2/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: config.clientId,
+        code,
+        redirect_uri: config.redirectUri,
+        code_verifier: verifier
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error_description || payload.error || `Cognito ${response.status}`);
+
+    const claims = decodeJwtPayload(payload.id_token || payload.access_token);
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+      ...payload,
+      claims,
+      expires_at: Date.now() + Math.max(Number(payload.expires_in || 3600) - 60, 60) * 1000
+    }));
+    sessionStorage.removeItem(AUTH_VERIFIER_KEY);
+    sessionStorage.removeItem(AUTH_STATE_KEY);
+    history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
+    toast("Login AWS conectado.");
+  } catch (error) {
+    toast(`Falha no login AWS: ${error.message}`);
+  }
+  return true;
+}
+
+function logoutAws() {
+  const config = currentAuthConfig();
+  localStorage.removeItem(AUTH_SESSION_KEY);
+  if (authConfigComplete(config)) {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      logout_uri: config.logoutUri
+    });
+    window.location.assign(`${config.cognitoDomain}/logout?${params.toString()}`);
+    return;
+  }
+  renderAuth();
+}
+
+function disableLocalAuth() {
+  localStorage.removeItem(AUTH_CONFIG_KEY);
+  localStorage.removeItem(AUTH_SESSION_KEY);
+  renderAuth();
+  toast("Login AWS desativado neste navegador.");
+}
+
+function renderAuth() {
+  const config = currentAuthConfig();
+  const complete = authConfigComplete(config);
+  const session = authSession();
+  const claims = session?.claims || {};
+  const label = claims.email || claims["cognito:username"] || claims.username || "AWS conectado";
+  const appShell = qs(".app-shell");
+  const authGate = qs("#authGate");
+  const authStatus = qs("#authStatus");
+  const loginBtn = qs("#loginBtn");
+  const logoutBtn = qs("#logoutBtn");
+
+  if (authStatus) {
+    authStatus.textContent = complete ? (session ? label : "Login AWS ativo") : "Login AWS pendente";
+    authStatus.dataset.type = complete ? (session ? "ok" : "warn") : "warn";
+  }
+  if (loginBtn) loginBtn.hidden = complete && Boolean(session);
+  if (logoutBtn) logoutBtn.hidden = !session;
+
+  if (!authGate || !appShell) return;
+  if (complete && !session) {
+    authGate.hidden = false;
+    appShell.hidden = true;
+  } else {
+    authGate.hidden = true;
+    appShell.hidden = false;
+  }
+}
+
 function updateBackendStatus(label, type = "info") {
   const status = qs("#backendStatus");
   if (!status) return;
@@ -180,8 +382,8 @@ async function backendRequest(path, options = {}) {
   if (!baseUrl) throw new Error("Configure a URL do backend em Governanca.");
   const headers = { ...(options.headers || {}) };
   if (options.auth !== false) {
-    const token = backendToken();
-    if (!token) throw new Error("Configure a chave do painel em Governanca.");
+    const token = backendAuthToken();
+    if (!token) throw new Error("Entre com AWS ou configure a chave do painel em Governanca.");
     headers.Authorization = `Bearer ${token}`;
   }
   const response = await fetch(`${baseUrl}${path}`, {
@@ -200,10 +402,12 @@ async function testBackend(showToast = true) {
     const uploadReady = payload.configured?.upload;
     const bufferReady = payload.configured?.buffer;
     const adminReady = payload.configured?.adminToken;
-    const label = uploadReady && bufferReady && adminReady ? "Backend pronto" : "Backend incompleto";
-    updateBackendStatus(label, uploadReady && bufferReady && adminReady ? "ok" : "warn");
+    const openAiReady = payload.configured?.openai;
+    const authReady = payload.configured?.awsLogin || adminReady;
+    const label = uploadReady && bufferReady && openAiReady && authReady ? "Backend pronto" : "Backend incompleto";
+    updateBackendStatus(label, uploadReady && bufferReady && openAiReady && authReady ? "ok" : "warn");
     if (showToast) {
-      toast(`${label}: Buffer ${bufferReady ? "ok" : "pendente"}, upload ${uploadReady ? "ok" : "pendente"}.`);
+      toast(`${label}: Buffer ${bufferReady ? "ok" : "pendente"}, upload ${uploadReady ? "ok" : "pendente"}, OpenAI ${openAiReady ? "ok" : "pendente"}.`);
     }
     return payload;
   } catch (error) {
@@ -235,6 +439,85 @@ async function uploadMediaFile(file) {
   });
   updateBackendStatus("Backend pronto", "ok");
   return result.media.url;
+}
+
+function selectedSiteFromForm(form) {
+  const siteId = form.elements.site_id?.value;
+  return state.sites.find((site) => site.id === siteId) || {};
+}
+
+function generationInput(form) {
+  const site = selectedSiteFromForm(form);
+  return {
+    siteId: site.id || "",
+    siteName: site.name || "Pesquisa Premios",
+    siteUrl: site.url || "",
+    objective: site.objective || "Gerar confianca e cadastros para pesquisas com Koins",
+    channel: form.elements.channel?.value || "Threads",
+    title: form.elements.title?.value || "",
+    body: form.elements.body?.value || "",
+    prompt: form.elements.ai_prompt?.value || form.elements.improvement_prompt?.value || "",
+    improvementPrompt: form.elements.improvement_prompt?.value || "",
+    image_prompt: form.elements.improvement_prompt?.value || form.elements.body?.value || "",
+    style: form.elements.image_style?.value || "",
+    size: form.elements.image_size?.value || "1024x1536",
+    quality: form.elements.image_quality?.value || "medium"
+  };
+}
+
+function applyGeneratedContent(form, content) {
+  if (content.title) form.elements.title.value = content.title;
+  if (content.body) form.elements.body.value = content.body;
+  if (content.image_prompt) form.elements.improvement_prompt.value = content.image_prompt;
+  if (content.revision_notes) form.elements.revision_notes.value = content.revision_notes;
+  if (content.next_action) form.elements.next_action.value = content.next_action;
+  if (content.risk) form.elements.risk.value = content.risk;
+  form.elements.status.value = "Rascunho";
+}
+
+async function generatePostText() {
+  const form = qs("#contentForm");
+  updateBackendStatus("Gerando texto OpenAI...", "info");
+  const result = await backendRequest("/api/generate-post", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(generationInput(form))
+  });
+  applyGeneratedContent(form, result.content || {});
+  updateBackendStatus("Backend pronto", "ok");
+  toast("Texto gerado. Revise antes de aprovar.");
+  return result.content;
+}
+
+async function generatePostImage() {
+  const form = qs("#contentForm");
+  updateBackendStatus("Gerando imagem OpenAI...", "info");
+  const input = generationInput(form);
+  const result = await backendRequest("/api/generate-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...input,
+      prompt: input.improvementPrompt || input.body || input.prompt,
+      filename: form.elements.title?.value || "post-koins"
+    })
+  });
+  form.elements.asset_url.value = result.media.url;
+  if (result.media.revisedPrompt) {
+    form.elements.revision_notes.value = [
+      form.elements.revision_notes.value,
+      `Prompt revisado pela OpenAI: ${result.media.revisedPrompt}`
+    ].filter(Boolean).join("\n");
+  }
+  setImagePreview(result.media.url, form.elements.title.value || "Imagem OpenAI");
+  updateBackendStatus("Backend pronto", "ok");
+  toast("Imagem criada e anexada ao post.");
+  return result.media;
+}
+
+async function generateCompletePost() {
+  await generatePostText();
+  await generatePostImage();
 }
 
 function normalizeSites(sites) {
@@ -623,6 +906,8 @@ function render() {
   updateSyncStatus(syncMode === "supabase" ? "Supabase conectado" : "Modo local", syncMode === "supabase" ? "ok" : "info");
   renderBackendSettings();
   updateBackendStatus(configuredBackendUrl() ? "Backend configurado" : "Backend nao configurado", configuredBackendUrl() ? "info" : "warn");
+  renderAuthSettings();
+  renderAuth();
 }
 
 function renderSiteFilter() {
@@ -1075,6 +1360,19 @@ function renderBackendSettings() {
   if (document.activeElement && form.contains(document.activeElement)) return;
   form.elements.backend_url.value = configuredBackendUrl();
   form.elements.backend_token.value = backendToken();
+}
+
+function renderAuthSettings() {
+  const form = qs("#authSettingsForm");
+  if (!form) return;
+  if (document.activeElement && form.contains(document.activeElement)) return;
+  const config = currentAuthConfig();
+  form.elements.auth_enabled.checked = config.enabled;
+  form.elements.cognito_domain.value = config.cognitoDomain;
+  form.elements.client_id.value = config.clientId;
+  form.elements.redirect_uri.value = config.redirectUri;
+  form.elements.logout_uri.value = config.logoutUri;
+  form.elements.scopes.value = config.scopes;
 }
 
 function tableMarkup(headers, rows) {
@@ -1754,6 +2052,27 @@ qs("#mediaFileInput").addEventListener("change", (event) => {
   setImagePreview(URL.createObjectURL(file), file.name);
 });
 
+qs("#generateTextBtn").addEventListener("click", () => {
+  generatePostText().catch((error) => {
+    updateBackendStatus("OpenAI com erro", "risk");
+    toast(error.message);
+  });
+});
+
+qs("#generateImageBtn").addEventListener("click", () => {
+  generatePostImage().catch((error) => {
+    updateBackendStatus("OpenAI com erro", "risk");
+    toast(error.message);
+  });
+});
+
+qs("#generateCompleteBtn").addEventListener("click", () => {
+  generateCompletePost().catch((error) => {
+    updateBackendStatus("OpenAI com erro", "risk");
+    toast(error.message);
+  });
+});
+
 qs("#distributionForm").addEventListener("submit", (event) => {
   event.preventDefault();
   addCollectionRecord(event.currentTarget, "distribution", distributionPayload, "Distribuicao");
@@ -1807,6 +2126,21 @@ qs("#backendSettingsForm").addEventListener("submit", (event) => {
   toast("Conexao do backend salva neste navegador.");
 });
 
+qs("#authSettingsForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const data = new FormData(event.currentTarget);
+  localStorage.setItem(AUTH_CONFIG_KEY, JSON.stringify({
+    enabled: data.get("auth_enabled") === "on",
+    cognitoDomain: normalizeAuthDomain(formString(data, "cognito_domain")),
+    clientId: formString(data, "client_id"),
+    redirectUri: formString(data, "redirect_uri") || `${window.location.origin}${window.location.pathname}`,
+    logoutUri: formString(data, "logout_uri") || `${window.location.origin}${window.location.pathname}`,
+    scopes: formString(data, "scopes", "openid email profile")
+  }));
+  render();
+  toast("Login AWS salvo neste navegador.");
+});
+
 qs("#searchInput").addEventListener("input", (event) => {
   filters.search = event.target.value;
   render();
@@ -1821,6 +2155,11 @@ qs("#runAuditBtn").addEventListener("click", runAudit);
 qs("#syncBtn").addEventListener("click", () => syncAllFromSupabase(true));
 qs("#testBackendBtn").addEventListener("click", () => testBackend(true));
 qs("#settingsTestBackendBtn").addEventListener("click", () => testBackend(true));
+qs("#loginBtn").addEventListener("click", () => startAwsLogin().catch((error) => toast(error.message)));
+qs("#logoutBtn").addEventListener("click", logoutAws);
+qs("#settingsLoginBtn").addEventListener("click", () => startAwsLogin().catch((error) => toast(error.message)));
+qs("#awsGateLoginBtn").addEventListener("click", () => startAwsLogin().catch((error) => toast(error.message)));
+qs("#disableAuthBtn").addEventListener("click", disableLocalAuth);
 qs("#publishNowBtn").addEventListener("click", () => {
   publishQueueNow().catch((error) => {
     updateBackendStatus("Backend com erro", "risk");
@@ -1847,5 +2186,10 @@ qs("#addSiteQuickBtn").addEventListener("click", () => {
   qs("#siteForm input[name='name']").focus();
 });
 
-render();
-syncAllFromSupabase(false);
+async function initDashboard() {
+  await finishAwsLoginIfNeeded();
+  render();
+  syncAllFromSupabase(false);
+}
+
+initDashboard();

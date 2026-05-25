@@ -8,3 +8,13 @@ window.KOINOPS_BACKEND = {
   // baseUrl: "https://seu-projeto.vercel.app"
   baseUrl: "https://dashboard-redes-automatico.vercel.app"
 };
+
+window.KOINOPS_AUTH = {
+  enabled: false,
+  provider: "aws-cognito",
+  cognitoDomain: "",
+  clientId: "",
+  redirectUri: "https://dashboard-redes-automatico.vercel.app/dashboard/",
+  logoutUri: "https://dashboard-redes-automatico.vercel.app/dashboard/",
+  scopes: "openid email profile"
+};

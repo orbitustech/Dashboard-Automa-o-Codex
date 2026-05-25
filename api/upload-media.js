@@ -1,4 +1,4 @@
-import { requireAdminToken, sendJson, setCors } from "../lib/http.mjs";
+import { requireOperatorAuth, sendJson, setCors } from "../lib/http.mjs";
 import { parseMultipartFile } from "../lib/multipart.mjs";
 import { uploadPublicImage } from "../lib/storage-upload.mjs";
 
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!requireAdminToken(req, res)) return;
+  if (!(await requireOperatorAuth(req, res))) return;
 
   try {
     const file = await parseMultipartFile(req, { limitBytes: Number(process.env.KOINOPS_UPLOAD_MAX_BYTES || 8 * 1024 * 1024) });

@@ -48,6 +48,37 @@ button {
   display: none;
 }
 
+.auth-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.auth-gate[hidden] {
+  display: none;
+}
+
+.auth-card {
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.auth-card h1 {
+  margin: 10px 0;
+  font-size: 28px;
+  letter-spacing: 0;
+}
+
+.auth-card p {
+  color: var(--muted);
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr);
@@ -304,6 +335,12 @@ button {
   font-weight: 700;
 }
 
+.compact-btn {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .view {
   display: none;
 }
@@ -541,6 +578,25 @@ button {
   grid-column: 1 / -1;
 }
 
+.ai-workbench {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.ai-workbench textarea {
+  min-height: 92px;
+}
+
+.ai-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(130px, 0.45fr) minmax(120px, 0.35fr);
+  gap: 10px;
+}
+
 .upload-box {
   min-height: 178px;
   border: 1px dashed #b8c4d4;
@@ -629,6 +685,20 @@ button {
   gap: 10px;
   align-items: end;
   margin-bottom: 14px;
+}
+
+.toggle-row {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--slate);
+  font-weight: 700;
+}
+
+.toggle-row input {
+  width: 18px;
+  height: 18px;
 }
 
 .form-submit {
@@ -1044,7 +1114,8 @@ button {
   .matrix-grid,
   .kanban,
   .workflow-strip,
-  .metric-pair {
+  .metric-pair,
+  .ai-controls {
     grid-template-columns: 1fr;
   }
 

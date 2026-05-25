@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cognito login for Dashboard Redes Automatico
+
+Parameters:
+  UserPoolName:
+    Type: String
+    Default: dashboard-redes-automatico-users
+  DomainPrefix:
+    Type: String
+    Description: Unique Cognito hosted UI domain prefix.
+  CallbackUrl:
+    Type: String
+    Default: https://dashboard-redes-automatico.vercel.app/dashboard/
+  LogoutUrl:
+    Type: String
+    Default: https://dashboard-redes-automatico.vercel.app/dashboard/
+
+Resources:
+  DashboardUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref UserPoolName
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 7
+
+  DashboardUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: dashboard-redes-automatico-web
+      UserPoolId: !Ref DashboardUserPool
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - !Ref CallbackUrl
+      LogoutURLs:
+        - !Ref LogoutUrl
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
+  DashboardUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref DomainPrefix
+      UserPoolId: !Ref DashboardUserPool
+
+Outputs:
+  UserPoolId:
+    Value: !Ref DashboardUserPool
+  UserPoolClientId:
+    Value: !Ref DashboardUserPoolClient
+  Issuer:
+    Value: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${DashboardUserPool}
+  HostedUiDomain:
+    Value: !Sub https://${DomainPrefix}.auth.${AWS::Region}.amazoncognito.com
+  CallbackUrl:
+    Value: !Ref CallbackUrl
+  LogoutUrl:
+    Value: !Ref LogoutUrl

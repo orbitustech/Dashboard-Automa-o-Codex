@@ -1,5 +1,5 @@
 import { publishPendingTasks } from "../lib/buffer-publisher.mjs";
-import { readJsonBody, requireAdminToken, sendJson, setCors } from "../lib/http.mjs";
+import { readJsonBody, requireOperatorAuth, sendJson, setCors } from "../lib/http.mjs";
 
 export default async function handler(req, res) {
   setCors(res);
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!requireAdminToken(req, res)) return;
+  if (!(await requireOperatorAuth(req, res))) return;
 
   try {
     const body = req.method === "POST" ? await readJsonBody(req) : {};

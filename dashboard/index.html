@@ -67,6 +67,21 @@
       </symbol>
     </svg>
 
+    <section id="authGate" class="auth-gate" hidden>
+      <div class="auth-card">
+        <div class="brand-mark">K</div>
+        <p class="eyebrow">Login AWS</p>
+        <h1>Entrar no Dashboard Redes Automatico</h1>
+        <p>Use o acesso da empresa para abrir o painel. A aprovacao de posts continua manual antes de publicar.</p>
+        <div class="row-actions">
+          <button class="primary-btn" id="awsGateLoginBtn" type="button">
+            <svg><use href="#icon-play"></use></svg><span>Entrar com AWS</span>
+          </button>
+          <button class="secondary-btn" id="disableAuthBtn" type="button">Desativar neste navegador</button>
+        </div>
+      </div>
+    </section>
+
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -125,6 +140,9 @@
           <div class="topbar-tools">
             <span class="sync-status" id="syncStatus">Local</span>
             <span class="sync-status" id="backendStatus">Backend nao testado</span>
+            <span class="sync-status" id="authStatus">Login AWS pendente</span>
+            <button class="secondary-btn compact-btn" id="loginBtn" type="button">Login AWS</button>
+            <button class="secondary-btn compact-btn" id="logoutBtn" type="button" hidden>Sair</button>
             <label class="field search-field">
               <span>Buscar</span>
               <input id="searchInput" type="search" placeholder="site, canal, premio..." />
@@ -323,6 +341,35 @@
               </label>
               <label class="field wide-field"><span>Legenda do post</span><textarea name="body" placeholder="Texto que sera enviado para a rede social"></textarea></label>
               <label class="field wide-field"><span>Pedido para melhorar</span><textarea name="improvement_prompt" placeholder="Ex: deixar mais premium, sem pessoa, estilo flat vector, cores verde e dourado"></textarea></label>
+              <div class="ai-workbench wide-field">
+                <label class="field"><span>Pedido para a OpenAI</span><textarea name="ai_prompt" placeholder="Ex: criar um post confiavel para Threads sobre responder pesquisas e trocar Koins por premios"></textarea></label>
+                <div class="ai-controls">
+                  <label class="field"><span>Estilo da imagem</span><input name="image_style" value="photorealistic premium social media product scene" /></label>
+                  <label class="field">
+                    <span>Tamanho</span>
+                    <select name="image_size">
+                      <option value="1024x1536">Vertical 9:16</option>
+                      <option value="1024x1024">Quadrado</option>
+                      <option value="1536x1024">Horizontal</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Qualidade</span>
+                    <select name="image_quality">
+                      <option value="medium">Media</option>
+                      <option value="high">Alta</option>
+                      <option value="low">Baixa</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="row-actions">
+                  <button class="secondary-btn" id="generateTextBtn" type="button">Criar texto</button>
+                  <button class="secondary-btn" id="generateImageBtn" type="button">Criar imagem</button>
+                  <button class="primary-btn" id="generateCompleteBtn" type="button">
+                    <svg><use href="#icon-play"></use></svg><span>Criar texto + imagem</span>
+                  </button>
+                </div>
+              </div>
               <label class="field wide-field"><span>Notas da revisao</span><textarea name="revision_notes" placeholder="Historico curto do que foi pedido, aprovado ou rejeitado"></textarea></label>
             </div>
 
@@ -607,6 +654,27 @@
                 </div>
               </form>
               <p class="muted">A chave do painel fica somente no seu navegador. As API keys reais continuam no backend e no 1Password.</p>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h4>Login AWS Cognito</h4>
+                <span class="muted">Acesso do operador ao dashboard</span>
+              </div>
+              <form id="authSettingsForm" class="settings-form" autocomplete="off">
+                <label class="toggle-row"><input name="auth_enabled" type="checkbox" /> <span>Exigir login AWS neste navegador</span></label>
+                <label class="field"><span>Dominio Cognito</span><input name="cognito_domain" placeholder="https://seu-dominio.auth.us-east-1.amazoncognito.com" /></label>
+                <label class="field"><span>Client ID</span><input name="client_id" placeholder="App client ID sem secret" /></label>
+                <label class="field"><span>Callback URL</span><input name="redirect_uri" placeholder="https://dashboard-redes-automatico.vercel.app/dashboard/" /></label>
+                <label class="field"><span>Logout URL</span><input name="logout_uri" placeholder="https://dashboard-redes-automatico.vercel.app/dashboard/" /></label>
+                <label class="field"><span>Scopes</span><input name="scopes" placeholder="openid email profile" /></label>
+                <div class="row-actions">
+                  <button class="secondary-btn" type="submit">Salvar login</button>
+                  <button class="primary-btn" id="settingsLoginBtn" type="button">
+                    <svg><use href="#icon-play"></use></svg><span>Entrar</span>
+                  </button>
+                </div>
+              </form>
+              <p class="muted">Depois de criar o User Pool na AWS, cole aqui o dominio e o Client ID. O backend tambem pode validar o JWT se voce configurar AWS_COGNITO_ISSUER e AWS_COGNITO_CLIENT_ID na Vercel.</p>
             </div>
           </div>
           <button class="secondary-btn" id="resetBtn">Limpar cache local</button>
