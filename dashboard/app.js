@@ -497,6 +497,116 @@ async function uploadMediaFile(file) {
   return result.media.url;
 }
 
+function isContentDraftAutomation(automation) {
+  const text = plainText(`${automation?.name || ""} ${automation?.output || ""}`);
+  return text.includes("post organico") || (text.includes("rascunho") && text.includes("conteudo"));
+}
+
+function automationTargetChannel(automation) {
+  const text = plainText(`${automation?.name || ""} ${automation?.output || ""}`);
+  const social = state.socials.find((item) =>
+    item.site_id === automation.site_id &&
+    item.status === "ativo" &&
+    item.buffer_channel_id &&
+    text.includes(plainText(item.channel))
+  ) || state.socials.find((item) =>
+    item.site_id === automation.site_id &&
+    item.status === "ativo" &&
+    item.buffer_channel_id
+  );
+  return social?.channel || "Threads";
+}
+
+function automationGenerationInput(automation, site) {
+  const recent = state.content
+    .filter((item) => item.site_id === site.id)
+    .slice(0, 5)
+    .map((item) => item.title)
+    .filter(Boolean)
+    .join("; ");
+  const period = plainText(automation.name).includes("tarde") ? "tarde" : "manha";
+  return {
+    siteId: site.id,
+    siteName: site.name || "Pesquisa Premios",
+    siteUrl: site.url || "https://pesquisapremios.com/",
+    objective: site.objective || "Gerar cadastros e uso do Pesquisa Premios",
+    channel: automationTargetChannel(automation),
+    title: `${automation.name} - ${new Date().toLocaleDateString("pt-BR")}`,
+    body: "",
+    prompt: [
+      `Execucao manual do botao Rodar para a rotina ${automation.name}.`,
+      `Criar 1 rascunho organico para o periodo da ${period}.`,
+      "A legenda deve instigar sem explicar demais: hook curto, fluxo simples de responder pesquisas, acumular Koins e resgatar gift cards/premios disponiveis.",
+      "Sempre chamar para clicar no link da bio.",
+      "Variar abertura, ritmo e exemplo de premio em relacao aos posts recentes.",
+      "Nao prometer premio certo, renda, saque ou ganho garantido.",
+      recent ? `Posts recentes para nao repetir: ${recent}` : ""
+    ].filter(Boolean).join(" "),
+    improvementPrompt: "Pesquisa Premios brand palette, pessoa brasileira, smartphone, gift cards Uber/iFood/Netflix/Spotify como texto simples, sem moedas, dinheiro ou logos oficiais.",
+    image_prompt: "Criar imagem 9:16 premium para social, com uma pessoa brasileira, smartphone, tela de pontos Koins e cards de gift card com texto legivel.",
+    imageText: "Koins viram premios",
+    style: "Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult, named gift cards, no money imagery, no official logos",
+    size: "1024x1536",
+    quality: "medium"
+  };
+}
+
+async function runContentDraftAutomation(automation) {
+  const site = state.sites.find((item) => item.id === automation.site_id);
+  if (!site) throw new Error("Cadastre ou sincronize o site antes de rodar esta automacao.");
+
+  updateBackendStatus("Rodando automacao...", "info");
+  const input = automationGenerationInput(automation, site);
+  const textResult = await backendRequest("/api/generate-post", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+  const generated = textResult.content || {};
+  updateBackendStatus("Gerando imagem...", "info");
+  const imageResult = await backendRequest("/api/generate-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...input,
+      prompt: generated.image_prompt || input.image_prompt || generated.body || input.prompt,
+      filename: generated.title || input.title
+    })
+  });
+
+  const now = new Date().toISOString();
+  const payload = {
+    site_id: site.id,
+    title: generated.title || input.title,
+    channel: input.channel,
+    body: generated.body || "",
+    asset_url: imageResult.media?.url || "",
+    status: "Rascunho",
+    risk: generated.risk || "baixo",
+    due_date: todayValue(),
+    scheduled_for: null,
+    next_action: "Revisar e aprovar: postar agora ou agendar",
+    improvement_prompt: generated.image_prompt || input.image_prompt,
+    revision_notes: [
+      generated.revision_notes,
+      `Criado pelo botao Rodar da automacao "${automation.name}" em ${formatDate(now)}.`
+    ].filter(Boolean).join("\n")
+  };
+
+  const created = await createRecord("content", payload);
+  state.content = [created, ...state.content.filter((item) => item.id !== created.id)];
+  await updateRecord("automations", automation.id, {
+    last_run: now,
+    status: "ativa",
+    next_action: "Rascunho criado em Conteudo para revisao"
+  });
+  saveState();
+  render();
+  switchView("content");
+  updateBackendStatus("Backend pronto", "ok");
+  toast("Rascunho criado em Conteudo. Revise antes de aprovar.");
+}
+
 function selectedSiteFromForm(form) {
   const siteId = form.elements.site_id?.value;
   return state.sites.find((site) => site.id === siteId) || {};
@@ -2226,6 +2336,8 @@ document.addEventListener("click", async (event) => {
   if (!actionButton) return;
 
   const { action, id, status, collection } = actionButton.dataset;
+  const wasDisabled = actionButton.disabled;
+  actionButton.disabled = true;
   try {
     if (action === "auditSite") {
       await auditSite(id);
@@ -2252,6 +2364,12 @@ document.addEventListener("click", async (event) => {
       toast("Automacao atualizada.");
     }
     if (action === "runAutomation") {
+      const automation = state.automations.find((item) => item.id === id);
+      if (!automation) throw new Error("Automacao nao encontrada.");
+      if (isContentDraftAutomation(automation)) {
+        await runContentDraftAutomation(automation);
+        return;
+      }
       await updateRecord("automations", id, { last_run: new Date().toISOString(), status: "ativa" });
       saveState();
       render();
@@ -2349,6 +2467,8 @@ document.addEventListener("click", async (event) => {
     }
   } catch (error) {
     toast(error.message);
+  } finally {
+    if (document.contains(actionButton)) actionButton.disabled = wasDisabled;
   }
 });
 
