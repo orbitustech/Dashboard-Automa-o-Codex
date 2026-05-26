@@ -1,6 +1,6 @@
 import { requireOperatorAuth, sendJson, setCors } from "../lib/http.mjs";
 import { parseMultipartFile } from "../lib/multipart.mjs";
-import { uploadPublicImage } from "../lib/storage-upload.mjs";
+import { uploadPublicMedia } from "../lib/storage-upload.mjs";
 
 export const config = {
   api: {
@@ -24,8 +24,8 @@ export default async function handler(req, res) {
   if (!(await requireOperatorAuth(req, res))) return;
 
   try {
-    const file = await parseMultipartFile(req, { limitBytes: Number(process.env.KOINOPS_UPLOAD_MAX_BYTES || 8 * 1024 * 1024) });
-    const uploaded = await uploadPublicImage(file);
+    const file = await parseMultipartFile(req, { limitBytes: Number(process.env.KOINOPS_UPLOAD_MAX_BYTES || 80 * 1024 * 1024) });
+    const uploaded = await uploadPublicMedia(file);
     sendJson(res, 200, {
       ok: true,
       media: uploaded

@@ -459,11 +459,12 @@ async function testBackend(showToast = true) {
     const bufferReady = payload.configured?.buffer;
     const adminReady = payload.configured?.adminToken;
     const openAiReady = payload.configured?.openai;
+    const geminiReady = payload.configured?.gemini;
     const authReady = payload.configured?.awsLogin || adminReady;
-    const label = uploadReady && bufferReady && openAiReady && authReady ? "Backend pronto" : "Backend incompleto";
-    updateBackendStatus(label, uploadReady && bufferReady && openAiReady && authReady ? "ok" : "warn");
+    const label = uploadReady && bufferReady && openAiReady && geminiReady && authReady ? "Backend pronto" : "Backend incompleto";
+    updateBackendStatus(label, uploadReady && bufferReady && openAiReady && geminiReady && authReady ? "ok" : "warn");
     if (showToast) {
-      toast(`${label}: Buffer ${bufferReady ? "ok" : "pendente"}, upload ${uploadReady ? "ok" : "pendente"}, OpenAI ${openAiReady ? "ok" : "pendente"}.`);
+      toast(`${label}: Buffer ${bufferReady ? "ok" : "pendente"}, upload ${uploadReady ? "ok" : "pendente"}, OpenAI ${openAiReady ? "ok" : "pendente"}, Gemini ${geminiReady ? "ok" : "pendente"}.`);
     }
     return payload;
   } catch (error) {
@@ -488,7 +489,7 @@ async function publishQueueNow() {
 async function uploadMediaFile(file) {
   const form = new FormData();
   form.append("media_file", file);
-  updateBackendStatus("Enviando imagem...", "info");
+  updateBackendStatus("Enviando midia...", "info");
   const result = await backendRequest("/api/upload-media", {
     method: "POST",
     body: form
@@ -628,7 +629,10 @@ function generationInput(form) {
     imageText: form.elements.image_text?.value || "",
     style: form.elements.image_style?.value || "",
     size: form.elements.image_size?.value || "1024x1536",
-    quality: form.elements.image_quality?.value || "medium"
+    quality: form.elements.image_quality?.value || "medium",
+    durationSeconds: Number(form.elements.video_duration?.value || 8),
+    resolution: form.elements.video_resolution?.value || "720p",
+    aspectRatio: "9:16"
   };
 }
 
@@ -700,6 +704,60 @@ async function generatePostImage(options = {}) {
   }
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function generatePostVideo(options = {}) {
+  const { manageUi = true } = options;
+  const form = qs("#contentForm");
+  if (manageUi) {
+    setAiGenerationBusy(true, "generateVideoBtn", "Criando video...");
+    setImageLoading("Iniciando video no Gemini Veo...");
+  }
+  try {
+    updateBackendStatus("Gerando video Gemini...", "info");
+    const input = generationInput(form);
+    const start = await backendRequest("/api/generate-video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...input,
+        prompt: input.improvementPrompt || input.body || input.prompt,
+        filename: form.elements.title?.value || "video-koins"
+      })
+    });
+    const operationName = start.operation?.operationName;
+    if (!operationName) throw new Error("Gemini nao retornou operacao de video.");
+
+    for (let attempt = 1; attempt <= 72; attempt += 1) {
+      setImageLoading(`Criando video com Gemini Veo... tentativa ${attempt}`);
+      await wait(attempt === 1 ? 8000 : 5000);
+      const status = await backendRequest("/api/video-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operationName,
+          filename: form.elements.title?.value || "video-koins"
+        })
+      });
+      if (status.done && status.media?.url) {
+        form.elements.asset_url.value = status.media.url;
+        setImagePreview(status.media.url, form.elements.title.value || "Video Gemini", status.media.contentType);
+        updateBackendStatus("Backend pronto", "ok");
+        toast("Video criado e anexado ao post.");
+        return status.media;
+      }
+    }
+    throw new Error("O video ainda esta em processamento. Tente Criar video novamente em alguns minutos.");
+  } catch (error) {
+    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Midia atual");
+    throw error;
+  } finally {
+    if (manageUi) setAiGenerationBusy(false);
+  }
+}
+
 async function generateCompletePost() {
   setAiGenerationBusy(true, "generateCompleteBtn", "Criando post...");
   setImageLoading("Preparando texto e imagem...");
@@ -716,8 +774,24 @@ async function generateCompletePost() {
   }
 }
 
+async function generateCompleteVideoPost() {
+  setAiGenerationBusy(true, "generateCompleteVideoBtn", "Criando post...");
+  setImageLoading("Preparando texto e video...");
+  try {
+    await generatePostText({ manageUi: false });
+    setImageLoading("Criando video com Gemini Veo...");
+    await generatePostVideo({ manageUi: false });
+  } catch (error) {
+    const form = qs("#contentForm");
+    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Midia atual");
+    throw error;
+  } finally {
+    setAiGenerationBusy(false);
+  }
+}
+
 function setAiGenerationBusy(isBusy, activeId = "", label = "Gerando...") {
-  qsa("#generateTextBtn, #generateImageBtn, #generateCompleteBtn").forEach((button) => {
+  qsa("#generateTextBtn, #generateImageBtn, #generateVideoBtn, #generateCompleteBtn, #generateCompleteVideoBtn").forEach((button) => {
     if (!button.dataset.defaultHtml) button.dataset.defaultHtml = button.innerHTML;
     const active = button.id === activeId;
     button.disabled = isBusy;
@@ -740,7 +814,7 @@ function setImageLoading(message = "Criando imagem com OpenAI...") {
     <div class="image-loading">
       <span class="image-spinner" aria-hidden="true"></span>
       <strong>${esc(message)}</strong>
-      <span>Isso pode levar alguns segundos.</span>
+      <span>Imagens levam segundos; videos podem levar alguns minutos.</span>
     </div>
   `;
 }
@@ -1067,6 +1141,28 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+function isVideoMedia(url, contentType = "") {
+  const cleanType = String(contentType || "").toLowerCase();
+  const cleanUrl = String(url || "").split("?")[0].toLowerCase();
+  return cleanType.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/.test(cleanUrl);
+}
+
+function mediaMarkup(url, label = "Midia", contentType = "") {
+  if (!url) return "";
+  if (isVideoMedia(url, contentType)) {
+    return `<video src="${esc(url)}" controls playsinline preload="metadata" aria-label="${esc(label)}"></video>`;
+  }
+  return `<img src="${esc(url)}" alt="${esc(label)}" loading="lazy">`;
+}
+
+function contentMediaCard(url, label = "Midia") {
+  if (!url) return "";
+  if (isVideoMedia(url)) {
+    return `<div class="content-media">${mediaMarkup(url, label)}</div><p><a href="${esc(url)}" target="_blank" rel="noreferrer">Abrir video</a></p>`;
+  }
+  return `<a class="content-media" href="${esc(url)}" target="_blank" rel="noreferrer">${mediaMarkup(url, label)}</a>`;
 }
 
 function plainText(value) {
@@ -1449,7 +1545,7 @@ function renderContent() {
           <article class="content-item" data-risk="${esc(item.risk)}">
             <h5>${esc(item.title)}</h5>
             <p>${esc(siteName(item.site_id))} - ${esc(item.channel || "sem canal")} - vence ${esc(formatShortDate(item.due_date))}</p>
-            ${item.asset_url ? `<a class="content-media" href="${esc(item.asset_url)}" target="_blank" rel="noreferrer"><img src="${esc(item.asset_url)}" alt="Midia de ${esc(item.title)}" loading="lazy"></a>` : ""}
+            ${contentMediaCard(item.asset_url, `Midia de ${item.title}`)}
             ${item.body ? `<p>${esc(item.body.slice(0, 180))}${item.body.length > 180 ? "..." : ""}</p>` : ""}
             ${item.improvement_prompt ? `<p class="improvement-note"><strong>Melhorar:</strong> ${esc(item.improvement_prompt.slice(0, 220))}${item.improvement_prompt.length > 220 ? "..." : ""}</p>` : ""}
             ${item.revision_notes ? `<p class="revision-note"><strong>Revisao:</strong> ${esc(item.revision_notes.slice(0, 180))}${item.revision_notes.length > 180 ? "..." : ""}</p>` : ""}
@@ -1896,7 +1992,7 @@ function setContentFormMode(contentId = null) {
   form.dataset.editingId = contentId || "";
 }
 
-function setImagePreview(url, label = "Midia selecionada") {
+function setImagePreview(url, label = "Midia selecionada", contentType = "") {
   const preview = qs("#imagePreview");
   if (!preview) return;
   preview.classList.remove("is-loading");
@@ -1908,7 +2004,7 @@ function setImagePreview(url, label = "Midia selecionada") {
     return;
   }
   preview.hidden = false;
-  preview.innerHTML = `<img src="${esc(url)}" alt="${esc(label)}">`;
+  preview.innerHTML = mediaMarkup(url, label, contentType);
 }
 
 function resetContentForm() {
@@ -2500,13 +2596,13 @@ qs("#mediaFileInput").addEventListener("change", (event) => {
     setImagePreview("");
     return;
   }
-  if (!["image/jpeg", "image/png"].includes(file.type)) {
-    toast("Envie apenas imagem JPG ou PNG.");
+  if (!["image/jpeg", "image/png", "video/mp4"].includes(file.type)) {
+    toast("Envie apenas JPG, PNG ou MP4.");
     event.target.value = "";
     setImagePreview("");
     return;
   }
-  setImagePreview(URL.createObjectURL(file), file.name);
+  setImagePreview(URL.createObjectURL(file), file.name, file.type);
 });
 
 qs("#generateTextBtn").addEventListener("click", () => {
@@ -2523,9 +2619,23 @@ qs("#generateImageBtn").addEventListener("click", () => {
   });
 });
 
+qs("#generateVideoBtn").addEventListener("click", () => {
+  generatePostVideo().catch((error) => {
+    updateBackendStatus("Gemini com erro", "risk");
+    toast(error.message);
+  });
+});
+
 qs("#generateCompleteBtn").addEventListener("click", () => {
   generateCompletePost().catch((error) => {
     updateBackendStatus("OpenAI com erro", "risk");
+    toast(error.message);
+  });
+});
+
+qs("#generateCompleteVideoBtn").addEventListener("click", () => {
+  generateCompleteVideoPost().catch((error) => {
+    updateBackendStatus("Gemini com erro", "risk");
     toast(error.message);
   });
 });

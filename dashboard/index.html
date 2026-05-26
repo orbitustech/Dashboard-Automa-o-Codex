@@ -364,12 +364,31 @@
                       <option value="low">Baixa</option>
                     </select>
                   </label>
+                  <label class="field">
+                    <span>Duracao video</span>
+                    <select name="video_duration">
+                      <option value="8">8 segundos</option>
+                      <option value="6">6 segundos</option>
+                      <option value="4">4 segundos</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Resolucao video</span>
+                    <select name="video_resolution">
+                      <option value="720p">720p</option>
+                      <option value="1080p">1080p</option>
+                    </select>
+                  </label>
                 </div>
                 <div class="row-actions">
                   <button class="secondary-btn" id="generateTextBtn" type="button">Criar texto</button>
                   <button class="secondary-btn" id="generateImageBtn" type="button">Criar imagem</button>
+                  <button class="secondary-btn" id="generateVideoBtn" type="button">Criar video</button>
                   <button class="primary-btn" id="generateCompleteBtn" type="button">
                     <svg><use href="#icon-play"></use></svg><span>Criar texto + imagem</span>
+                  </button>
+                  <button class="primary-btn" id="generateCompleteVideoBtn" type="button">
+                    <svg><use href="#icon-play"></use></svg><span>Criar texto + video</span>
                   </button>
                 </div>
               </div>
@@ -379,12 +398,12 @@
             <div class="editor-side">
               <label class="upload-box" for="mediaFileInput">
                 <svg><use href="#icon-upload"></use></svg>
-                <strong>Imagem JPG/PNG</strong>
-                <span>Escolha uma imagem do seu computador</span>
-                <input id="mediaFileInput" name="media_file" type="file" accept="image/png,image/jpeg" />
+                <strong>Midia JPG/PNG/MP4</strong>
+                <span>Escolha uma imagem ou video do seu computador</span>
+                <input id="mediaFileInput" name="media_file" type="file" accept="image/png,image/jpeg,video/mp4" />
               </label>
               <div id="imagePreview" class="upload-preview" hidden></div>
-              <label class="field"><span>Ou usar URL da imagem</span><input name="asset_url" placeholder="https://imagem-publica.png" /></label>
+              <label class="field"><span>Ou usar URL da midia</span><input name="asset_url" placeholder="https://midia-publica.png ou .mp4" /></label>
               <label class="field">
                 <span>Status</span>
                 <select name="status">
