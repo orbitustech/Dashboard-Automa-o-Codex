@@ -1584,7 +1584,13 @@ function nextContentButton(item) {
     ].join("");
   }
   if (item.status === "Agendado" && pendingDistributionTasksForContent(item.id).length) {
-    return miniButton("publishContentNow", item.id, "Postar agora", "approve");
+    return [
+      miniButton("publishContentNow", item.id, "Postar agora", "approve"),
+      miniButton("markContentPublished", item.id, "Marcar publicado", "approve")
+    ].join("");
+  }
+  if (item.status === "Agendado") {
+    return miniButton("markContentPublished", item.id, "Marcar publicado", "approve");
   }
   return "";
 }
@@ -2267,6 +2273,39 @@ async function scheduleContent(contentId) {
   toast(result.published ? `${result.published} post(s) agendados no Buffer.` : "Agendamento salvo. Nenhum post novo foi enviado ao Buffer.");
 }
 
+async function markContentPublished(contentId) {
+  const content = requireContentItem(contentId);
+  if (!["Agendado", "Aprovacao"].includes(content.status)) {
+    throw new Error("So e possivel marcar como publicado um conteudo agendado ou em aprovacao.");
+  }
+  const ok = window.confirm("Marcar este conteudo como publicado no dashboard? Isso nao chama o Buffer; apenas atualiza o status local/Supabase.");
+  if (!ok) {
+    toast("Acao cancelada.");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  await updateRecord("content", contentId, {
+    status: "Publicado",
+    published_at: now,
+    next_action: "Publicado manualmente no dashboard"
+  });
+
+  const relatedTasks = state.distribution.filter((task) => task.content_id === contentId);
+  for (const task of relatedTasks) {
+    await updateRecord("distribution", task.id, {
+      status: "publicado",
+      published_at: task.published_at || now,
+      error_message: null,
+      note: [task.note, "Marcado como publicado manualmente no dashboard."].filter(Boolean).join(" ")
+    });
+  }
+
+  saveState();
+  render();
+  toast("Conteudo marcado como publicado.");
+}
+
 function koinMetricPayload(data) {
   return {
     site_id: requireSite(data),
@@ -2496,6 +2535,9 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "scheduleContent") {
       await scheduleContent(id);
+    }
+    if (action === "markContentPublished") {
+      await markContentPublished(id);
     }
     if (action === "rejectContent") {
       await updateRecord("content", id, {
