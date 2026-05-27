@@ -1,4 +1,14 @@
 {
   "cleanUrls": true,
-  "trailingSlash": true
+  "trailingSlash": true,
+  "crons": [
+    {
+      "path": "/api/cron/create-draft-1330",
+      "schedule": "30 16 * * *"
+    },
+    {
+      "path": "/api/cron/create-draft-1730",
+      "schedule": "30 20 * * *"
+    }
+  ]
 }

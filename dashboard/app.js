@@ -71,27 +71,28 @@ const titles = {
 const columns = ["Rascunho", "Aprovacao", "Agendado", "Publicado"];
 const codexContentPlans = [
   {
-    id: "pesquisa-premios-organico-2026-05-26",
+    id: "pesquisa-premios-vercel-cron",
     siteLabel: "Pesquisa Premios",
-    title: "2 posts organicos por dia",
-    period: "26/05 a 31/05/2026",
-    start: "2026-05-26T00:00:00-03:00",
+    sourceLabel: "Vercel Cron ativo",
+    title: "2 rascunhos organicos por dia",
+    period: "27/05 a 31/05/2026; depois continua diario",
+    start: "2026-05-27T00:00:00-03:00",
     end: "2026-05-31T23:59:59-03:00",
-    totalDrafts: 12,
+    totalDrafts: 10,
     cadence: "2 rascunhos por dia",
     status: "ativa",
-    owner: "Codex",
-    guardrail: "Cria apenas rascunhos. Voce aprova e escolhe Postar agora ou Agendar.",
+    owner: "Vercel",
+    guardrail: "Cria apenas rascunhos no Supabase. Voce aprova e escolhe Postar agora ou Agendar.",
     windows: [
       {
-        label: "Manha",
-        time: "09:00",
-        output: "1 rascunho com legenda, CTA para link na bio e ideia/imagem."
+        label: "Alvo 14:00",
+        time: "13:30",
+        output: "Vercel dispara meia hora antes para compensar atraso do plano gratis."
       },
       {
-        label: "Tarde",
-        time: "17:00",
-        output: "1 rascunho com angulo diferente para evitar repeticao."
+        label: "Alvo 18:00",
+        time: "17:30",
+        output: "Cria 1 rascunho com angulo diferente, sem publicar sozinho."
       }
     ]
   }
@@ -1477,7 +1478,7 @@ function renderCodexAutomationPlan() {
       <section class="codex-plan-panel">
         <div class="codex-plan-head">
           <div>
-            <p class="eyebrow">Automacao do Codex ativa</p>
+            <p class="eyebrow">${esc(plan.sourceLabel || "Automacao ativa")}</p>
             <h4>${esc(plan.title)}</h4>
             <p class="muted">${esc(site?.name || plan.siteLabel)} - ${esc(plan.period)} - ${esc(plan.cadence)}</p>
           </div>
