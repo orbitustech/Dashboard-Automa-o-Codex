@@ -1654,6 +1654,26 @@ function pendingDistributionTasksForContent(contentId) {
   );
 }
 
+function socialTargetsForContent(content) {
+  return state.socials.filter((social) =>
+    social.site_id === content.site_id &&
+    social.status === "ativo" &&
+    cleanBufferChannelId(social.buffer_channel_id) &&
+    contentMatchesSocial(content, social)
+  );
+}
+
+function missingDistributionTargetsForContent(content) {
+  const tasks = state.distribution.filter((task) => task.content_id === content.id);
+  return socialTargetsForContent(content).filter((social) => {
+    const channelId = cleanBufferChannelId(social.buffer_channel_id);
+    return !tasks.some((task) =>
+      cleanBufferChannelId(task.buffer_channel_id) === channelId &&
+      task.status !== "erro"
+    );
+  });
+}
+
 function nextContentButton(item) {
   if (item.status === "Rascunho") return miniButton("advanceContent", item.id, "Enviar para revisao");
   if (item.status === "Aprovacao") {
@@ -1669,7 +1689,13 @@ function nextContentButton(item) {
     ].join("");
   }
   if (item.status === "Agendado") {
-    return miniButton("markContentPublished", item.id, "Marcar publicado", "approve");
+    return [
+      missingDistributionTargetsForContent(item).length ? miniButton("publishMissingNetworks", item.id, "Postar redes faltantes", "approve") : "",
+      miniButton("markContentPublished", item.id, "Marcar publicado", "approve")
+    ].join("");
+  }
+  if (item.status === "Publicado" && missingDistributionTargetsForContent(item).length) {
+    return miniButton("publishMissingNetworks", item.id, "Postar redes faltantes", "approve");
   }
   return "";
 }
@@ -2334,17 +2360,17 @@ async function updatePendingTaskSchedule(contentId, scheduledFor) {
 }
 
 async function sendContentTasksToBackend(contentId, tasks, publishMode) {
-  if (!tasks.length) throw new Error("Nenhuma tarefa pendente para enviar ao Buffer.");
   updateBackendStatus(publishMode === "now" ? "Postando agora..." : "Agendando no Buffer...", "info");
+  const body = {
+    publish_mode: publishMode,
+    content_id: contentId,
+    limit: Math.max(tasks.length, 10)
+  };
+  if (tasks.length) body.task_ids = taskIds(tasks);
   const result = await backendRequest("/api/publish", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      publish_mode: publishMode,
-      content_id: contentId,
-      task_ids: taskIds(tasks),
-      limit: tasks.length
-    })
+    body: JSON.stringify(body)
   });
   await syncAllFromSupabase(false);
   updateBackendStatus("Backend pronto", "ok");
@@ -2373,6 +2399,18 @@ async function publishContentNow(contentId) {
   const result = await sendContentTasksToBackend(contentId, tasks, "now");
   const sent = result.results?.filter((item) => item.sharedNow || item.bufferPostId).length || result.published || 0;
   toast(sent ? `${sent} post(s) enviados para publicacao imediata.` : "Nenhum post novo foi publicado. Confira a fila tecnica.");
+}
+
+async function publishMissingNetworks(contentId) {
+  const content = requireContentItem(contentId);
+  await createDistributionQueueForContent(content, { scheduledFor: null });
+  saveState();
+  render();
+
+  const tasks = pendingDistributionTasksForContent(contentId);
+  const result = await sendContentTasksToBackend(contentId, tasks, "now");
+  const sent = result.results?.filter((item) => item.sharedNow || item.bufferPostId).length || result.published || 0;
+  toast(sent ? `${sent} rede(s) faltante(s) enviadas para publicacao.` : "Nao havia rede faltante pendente. Confira Distribuicao.");
 }
 
 async function scheduleContent(contentId) {
@@ -2668,6 +2706,9 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "scheduleContent") {
       await scheduleContent(id);
+    }
+    if (action === "publishMissingNetworks") {
+      await publishMissingNetworks(id);
     }
     if (action === "markContentPublished") {
       await markContentPublished(id);
