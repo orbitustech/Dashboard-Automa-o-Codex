@@ -1,5 +1,5 @@
 import { requireOperatorAuth, sendJson, setCors } from "../lib/http.mjs";
-import { ensurePublicMediaBucket } from "../lib/storage-upload.mjs";
+import { ensurePublicImageBucket, ensurePublicVideoBucket } from "../lib/storage-upload.mjs";
 
 export default async function handler(req, res) {
   setCors(res);
@@ -17,10 +17,19 @@ export default async function handler(req, res) {
   if (!(await requireOperatorAuth(req, res))) return;
 
   try {
-    const bucket = await ensurePublicMediaBucket();
+    const imageBucket = await ensurePublicImageBucket();
+    let videoBucket = null;
+    let videoError = "";
+    try {
+      videoBucket = await ensurePublicVideoBucket();
+    } catch (error) {
+      videoError = error.message;
+    }
     sendJson(res, 200, {
       ok: true,
-      bucket
+      imageBucket,
+      videoBucket,
+      videoError
     });
   } catch (error) {
     sendJson(res, 500, {
