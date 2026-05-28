@@ -578,59 +578,19 @@ function automationGenerationInput(automation, site) {
 }
 
 async function runContentDraftAutomation(automation) {
-  const site = state.sites.find((item) => item.id === automation.site_id);
-  if (!site) throw new Error("Cadastre ou sincronize o site antes de rodar esta automacao.");
-
-  updateBackendStatus("Rodando automacao...", "info");
-  const input = automationGenerationInput(automation, site);
-  const textResult = await backendRequest("/api/generate-post", {
+  const slot = plainText(`${automation.name} ${automation.schedule}`).includes("18") ? "18h" : "14h";
+  updateBackendStatus("Criando rascunho...", "info");
+  const result = await backendRequest("/api/create-draft", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input)
+    body: JSON.stringify({ slot })
   });
-  const generated = textResult.content || {};
-  updateBackendStatus("Gerando imagem...", "info");
-  const imageResult = await backendRequest("/api/generate-image", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...input,
-      prompt: generated.image_prompt || input.image_prompt || generated.body || input.prompt,
-      filename: generated.title || input.title
-    })
-  });
-
-  const now = new Date().toISOString();
-  const payload = {
-    site_id: site.id,
-    title: generated.title || input.title,
-    channel: input.channel,
-    body: generated.body || "",
-    asset_url: imageResult.media?.url || "",
-    status: "Rascunho",
-    risk: generated.risk || "baixo",
-    due_date: todayValue(),
-    scheduled_for: null,
-    next_action: "Revisar e aprovar: postar agora ou agendar",
-    improvement_prompt: generated.image_prompt || input.image_prompt,
-    revision_notes: [
-      generated.revision_notes,
-      `Criado pelo botao Rodar da automacao "${automation.name}" em ${formatDate(now)}.`
-    ].filter(Boolean).join("\n")
-  };
-
-  const created = await createRecord("content", payload);
-  state.content = [created, ...state.content.filter((item) => item.id !== created.id)];
-  await updateRecord("automations", automation.id, {
-    last_run: now,
-    status: "ativa",
-    next_action: "Rascunho criado em Conteudo para revisao"
-  });
+  await syncAllFromSupabase(false);
   saveState();
   render();
   switchView("content");
   updateBackendStatus("Backend pronto", "ok");
-  toast("Rascunho criado em Conteudo. Revise antes de aprovar.");
+  toast(result.skipped ? "O rascunho desse horario ja existia." : "Rascunho criado em Conteudo. Revise antes de aprovar.");
 }
 
 function selectedSiteFromForm(form) {
