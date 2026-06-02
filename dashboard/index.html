@@ -109,6 +109,9 @@
           <button class="nav-item" data-view="content" title="Conteudo">
             <svg><use href="#icon-content"></use></svg><span>Conteudo</span>
           </button>
+          <button class="nav-item" data-view="videos" title="Videos">
+            <svg><use href="#icon-play"></use></svg><span>Videos</span>
+          </button>
           <button class="nav-item" data-view="koins" title="Koins e premios">
             <svg><use href="#icon-coin"></use></svg><span>Koins</span>
           </button>
@@ -327,7 +330,7 @@
             </div>
           </div>
 
-          <form id="contentForm" class="content-editor panel" autocomplete="off">
+          <form id="contentForm" class="content-editor panel" data-content-mode="post" autocomplete="off">
             <div class="editor-main">
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
               <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Threads - chamada Koins" /></label>
@@ -364,31 +367,12 @@
                       <option value="low">Baixa</option>
                     </select>
                   </label>
-                  <label class="field">
-                    <span>Duracao video</span>
-                    <select name="video_duration">
-                      <option value="8">8 segundos</option>
-                      <option value="6">6 segundos</option>
-                      <option value="4">4 segundos</option>
-                    </select>
-                  </label>
-                  <label class="field">
-                    <span>Resolucao video</span>
-                    <select name="video_resolution">
-                      <option value="720p">720p</option>
-                      <option value="1080p">1080p</option>
-                    </select>
-                  </label>
                 </div>
                 <div class="row-actions">
-                  <button class="secondary-btn" id="generateTextBtn" type="button">Criar texto</button>
-                  <button class="secondary-btn" id="generateImageBtn" type="button">Criar imagem</button>
-                  <button class="secondary-btn" id="generateVideoBtn" type="button">Criar video</button>
-                  <button class="primary-btn" id="generateCompleteBtn" type="button">
+                  <button class="secondary-btn" id="generateTextBtn" data-ai-button type="button">Criar texto</button>
+                  <button class="secondary-btn" id="generateImageBtn" data-ai-button type="button">Criar imagem</button>
+                  <button class="primary-btn" id="generateCompleteBtn" data-ai-button type="button">
                     <svg><use href="#icon-play"></use></svg><span>Criar texto + imagem</span>
-                  </button>
-                  <button class="primary-btn" id="generateCompleteVideoBtn" type="button">
-                    <svg><use href="#icon-play"></use></svg><span>Criar texto + video</span>
                   </button>
                 </div>
               </div>
@@ -398,12 +382,12 @@
             <div class="editor-side">
               <label class="upload-box" for="mediaFileInput">
                 <svg><use href="#icon-upload"></use></svg>
-                <strong>Midia JPG/PNG/MP4</strong>
-                <span>Escolha para substituir a midia usada neste post</span>
-                <input id="mediaFileInput" name="media_file" type="file" accept="image/png,image/jpeg,video/mp4" />
+                <strong>Imagem JPG/PNG</strong>
+                <span>Escolha para substituir a imagem usada neste post</span>
+                <input id="mediaFileInput" name="media_file" type="file" accept="image/png,image/jpeg" />
               </label>
               <div id="imagePreview" class="upload-preview" hidden></div>
-              <label class="field"><span>Ou usar URL da midia</span><input name="asset_url" placeholder="https://midia-publica.png ou .mp4" /></label>
+              <label class="field"><span>Ou usar URL da imagem</span><input name="asset_url" placeholder="https://midia-publica.png" /></label>
               <label class="field">
                 <span>Status</span>
                 <select name="status">
@@ -461,6 +445,134 @@
             </form>
             <div id="distributionTable" class="data-table"></div>
           </details>
+        </section>
+
+        <section id="videos" class="view" aria-labelledby="videos-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Publicacao social</p>
+              <h3 id="videos-title">Criar, revisar e publicar videos</h3>
+            </div>
+          </div>
+
+          <div class="workflow-strip">
+            <article><strong>1</strong><span>Criar video</span></article>
+            <article><strong>2</strong><span>Revisar video e texto</span></article>
+            <article><strong>3</strong><span>Aprovar</span></article>
+            <article><strong>4</strong><span>Buffer publica</span></article>
+          </div>
+
+          <div class="backend-actionbar panel">
+            <div>
+              <h4>Publicador automatico</h4>
+              <p class="muted">Crie o video, envie para revisao e escolha no card aprovado: postar agora ou agendar.</p>
+            </div>
+            <div class="row-actions">
+              <button class="secondary-btn" id="testBackendVideoBtn" type="button">Testar backend</button>
+              <button class="primary-btn" id="publishVideoNowBtn" type="button">
+                <svg><use href="#icon-play"></use></svg><span>Processar fila pendente</span>
+              </button>
+            </div>
+          </div>
+
+          <form id="videoContentForm" class="content-editor panel" data-content-mode="video" autocomplete="off">
+            <div class="editor-main">
+              <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
+              <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Reels - chamada Koins" /></label>
+              <label class="field">
+                <span>Publicar em</span>
+                <select name="channel">
+                  <option value="Instagram">Instagram</option>
+                  <option value="Tiktok">TikTok</option>
+                  <option value="Facebook">Facebook</option>
+                  <option value="Threads">Threads</option>
+                  <option value="Todas">Todas as redes ativas</option>
+                </select>
+              </label>
+              <label class="field wide-field"><span>Legenda do video</span><textarea name="body" placeholder="Texto que sera enviado junto com o video"></textarea></label>
+              <label class="field wide-field"><span>Pedido para melhorar</span><textarea name="improvement_prompt" placeholder="Ex: video vertical, dinamico, premium, sem moedas, com gift cards e link na bio"></textarea></label>
+              <div class="ai-workbench wide-field">
+                <label class="field"><span>Pedido para a OpenAI</span><textarea name="ai_prompt" placeholder="Ex: criar roteiro curto para Reels/TikTok mostrando como responder pesquisas e trocar Koins por premios"></textarea></label>
+                <div class="ai-controls">
+                  <label class="field"><span>Estilo do video</span><input name="image_style" value="Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult, named gift cards, no money imagery, no official logos" /></label>
+                  <label class="field"><span>Texto no video</span><input name="image_text" placeholder="Opcional: frase curta na tela" /></label>
+                  <label class="field">
+                    <span>Tamanho</span>
+                    <select name="image_size">
+                      <option value="1024x1536">Vertical 9:16</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Qualidade</span>
+                    <select name="image_quality">
+                      <option value="medium">Media</option>
+                      <option value="high">Alta</option>
+                      <option value="low">Baixa</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Duracao video</span>
+                    <select name="video_duration">
+                      <option value="8">8 segundos</option>
+                      <option value="6">6 segundos</option>
+                      <option value="4">4 segundos</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Resolucao video</span>
+                    <select name="video_resolution">
+                      <option value="720p">720p</option>
+                      <option value="1080p">1080p</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="row-actions">
+                  <button class="secondary-btn" id="videoGenerateTextBtn" data-ai-button type="button">Criar texto</button>
+                  <button class="secondary-btn" id="videoGenerateVideoBtn" data-ai-button type="button">Criar video</button>
+                  <button class="primary-btn" id="videoGenerateCompleteVideoBtn" data-ai-button type="button">
+                    <svg><use href="#icon-play"></use></svg><span>Criar texto + video</span>
+                  </button>
+                </div>
+              </div>
+              <label class="field wide-field"><span>Notas da revisao</span><textarea name="revision_notes" placeholder="Historico curto do que foi pedido, aprovado ou rejeitado"></textarea></label>
+            </div>
+
+            <div class="editor-side">
+              <label class="upload-box" for="videoMediaFileInput">
+                <svg><use href="#icon-upload"></use></svg>
+                <strong>Video MP4</strong>
+                <span>Escolha para substituir o video usado neste post</span>
+                <input id="videoMediaFileInput" name="media_file" type="file" accept="video/mp4" />
+              </label>
+              <div id="videoPreview" class="upload-preview" hidden></div>
+              <label class="field"><span>Ou usar URL do video</span><input name="asset_url" placeholder="https://midia-publica.mp4" /></label>
+              <label class="field">
+                <span>Status</span>
+                <select name="status">
+                  <option value="Rascunho">Rascunho</option>
+                  <option value="Aprovacao">Aprovacao</option>
+                  <option value="Agendado">Agendado</option>
+                  <option value="Publicado">Publicado</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Risco</span>
+                <select name="risk">
+                  <option value="baixo">Baixo</option>
+                  <option value="medio">Medio</option>
+                  <option value="alto">Alto</option>
+                </select>
+              </label>
+              <label class="field"><span>Data alvo</span><input name="due_date" type="date" /></label>
+              <label class="field"><span>Agendar para</span><input name="scheduled_for" type="datetime-local" /></label>
+              <label class="field"><span>Proxima acao</span><input name="next_action" placeholder="Revisar e aprovar" /></label>
+              <button class="primary-btn form-submit" type="submit">
+                <svg><use href="#icon-plus"></use></svg><span>Salvar video</span>
+              </button>
+              <button class="secondary-btn form-submit" id="cancelVideoContentEditBtn" type="button" hidden>Cancelar edicao</button>
+            </div>
+          </form>
+          <div id="videoContentBoard" class="kanban"></div>
         </section>
 
         <section id="koins" class="view" aria-labelledby="koins-title">
