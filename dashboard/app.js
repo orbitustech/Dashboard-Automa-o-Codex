@@ -97,6 +97,8 @@ const codexContentPlans = [
   {
     id: "pesquisa-premios-vercel-cron",
     siteLabel: "Pesquisa Premios",
+    contentType: "post",
+    view: "content",
     sourceLabel: "Vercel Cron ativo",
     title: "2 rascunhos organicos por dia",
     period: "27/05 a 31/05/2026; depois continua diario",
@@ -117,6 +119,34 @@ const codexContentPlans = [
         label: "Alvo 18:00",
         time: "17:30",
         output: "Cria 1 rascunho com angulo diferente, sem publicar sozinho."
+      }
+    ]
+  },
+  {
+    id: "pesquisa-premios-video-drafts",
+    siteLabel: "Pesquisa Premios",
+    contentType: "video",
+    view: "videos",
+    sourceLabel: "Endpoint pronto para AWS",
+    title: "2 rascunhos de video por dia",
+    period: "Diario, apos configurar o agendador",
+    start: "2026-06-02T00:00:00-03:00",
+    end: "2026-12-31T23:59:59-03:00",
+    totalDrafts: 14,
+    cadence: "2 rascunhos de video por dia",
+    status: "pausada",
+    owner: "AWS EventBridge",
+    guardrail: "Cria legenda e prompt de video na aba Videos. O MP4 precisa ser gerado com Gemini ou anexado antes de aprovar.",
+    windows: [
+      {
+        label: "Video tarde",
+        time: "15:30",
+        output: "Cria 1 rascunho em Videos, sem publicar e sem consumir Buffer."
+      },
+      {
+        label: "Video noite",
+        time: "19:30",
+        output: "Cria 1 rascunho com angulo diferente para revisao no dashboard."
       }
     ]
   }
@@ -598,7 +628,13 @@ async function replaceContentMediaFromFile(file, form = activeContentForm()) {
 
 function isContentDraftAutomation(automation) {
   const text = plainText(`${automation?.name || ""} ${automation?.output || ""}`);
+  if (isVideoDraftAutomation(automation)) return false;
   return text.includes("post organico") || (text.includes("rascunho") && text.includes("conteudo"));
+}
+
+function isVideoDraftAutomation(automation) {
+  const text = plainText(`${automation?.name || ""} ${automation?.output || ""}`);
+  return text.includes("video") && (text.includes("rascunho") || text.includes("conteudo") || text.includes("post"));
 }
 
 function automationTargetChannel(automation) {
@@ -690,6 +726,23 @@ async function runContentDraftAutomation(automation) {
   switchView("content");
   updateBackendStatus("Backend pronto", "ok");
   toast(result.skipped ? "O rascunho desse horario ja existia." : "Rascunho criado em Conteudo. Revise antes de aprovar.");
+}
+
+async function runVideoDraftAutomation(automation) {
+  const text = plainText(`${automation.name} ${automation.schedule}`);
+  const slot = text.includes("18") || text.includes("19") ? "18h" : "14h";
+  updateBackendStatus("Criando rascunho de video...", "info");
+  const result = await backendRequest("/api/create-video-draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slot })
+  });
+  await syncAllFromSupabase(false);
+  saveState();
+  render();
+  switchView("videos");
+  updateBackendStatus("Backend pronto", "ok");
+  toast(result.skipped ? "O rascunho de video desse horario ja existia." : "Rascunho criado em Videos. Gere/anexe o MP4 antes de aprovar.");
 }
 
 function selectedSiteFromForm(form) {
@@ -1299,6 +1352,8 @@ function contentItemsForCodexPlan(plan) {
   const end = new Date(plan.end);
   return state.content.filter((item) => {
     if (site && item.site_id !== site.id) return false;
+    if (plan.contentType === "video" && !isVideoContent(item)) return false;
+    if (plan.contentType === "post" && isVideoContent(item)) return false;
     const rawDate = contentDateForPlan(item);
     if (!rawDate) return false;
     const date = new Date(rawDate.length === 10 ? `${rawDate}T12:00:00-03:00` : rawDate);
@@ -1638,6 +1693,7 @@ function renderCodexAutomationPlan() {
     const waitingReview = items.filter((item) => ["Rascunho", "Aprovacao"].includes(item.status)).length;
     const sentToBuffer = items.filter((item) => ["Agendado", "Publicado"].includes(item.status)).length;
     const remaining = Math.max(0, plan.totalDrafts - items.length);
+    const isVideoPlan = plan.contentType === "video";
     return `
       <section class="codex-plan-panel">
         <div class="codex-plan-head">
@@ -1648,12 +1704,12 @@ function renderCodexAutomationPlan() {
           </div>
           <div class="codex-plan-actions">
             ${statusChip(plan.status)}
-            <button class="secondary-btn compact-btn" type="button" data-action="openContent">Ver Conteudo</button>
+            <button class="secondary-btn compact-btn" type="button" data-action="${isVideoPlan ? "openVideos" : "openContent"}">${isVideoPlan ? "Ver Videos" : "Ver Conteudo"}</button>
           </div>
         </div>
         <div class="codex-plan-metrics">
           <article><span>Meta da semana</span><strong>${esc(plan.totalDrafts)}</strong><small>rascunhos</small></article>
-          <article><span>Visiveis no painel</span><strong>${esc(items.length)}</strong><small>posts desta semana</small></article>
+          <article><span>Visiveis no painel</span><strong>${esc(items.length)}</strong><small>${isVideoPlan ? "videos" : "posts"} desta semana</small></article>
           <article><span>Para revisar</span><strong>${esc(waitingReview)}</strong><small>rascunho/aprovacao</small></article>
           <article><span>Restantes</span><strong>${esc(remaining)}</strong><small>ate domingo</small></article>
         </div>
@@ -2782,6 +2838,10 @@ document.addEventListener("click", async (event) => {
     if (action === "runAutomation") {
       const automation = state.automations.find((item) => item.id === id);
       if (!automation) throw new Error("Automacao nao encontrada.");
+      if (isVideoDraftAutomation(automation)) {
+        await runVideoDraftAutomation(automation);
+        return;
+      }
       if (isContentDraftAutomation(automation)) {
         await runContentDraftAutomation(automation);
         return;
@@ -2793,6 +2853,10 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "openContent") {
       switchView("content");
+      return;
+    }
+    if (action === "openVideos") {
+      switchView("videos");
       return;
     }
     if (action === "editContent") {
