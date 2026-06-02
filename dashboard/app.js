@@ -8,6 +8,25 @@ const AUTH_STATE_KEY = "koinops-auth-state";
 const supabaseConfig = window.KOINOPS_SUPABASE || {};
 const backendConfig = window.KOINOPS_BACKEND || {};
 const authDefaults = window.KOINOPS_AUTH || {};
+const PESQUISA_PREMIOS_BRAND = {
+  name: "Pesquisa Premios",
+  url: "https://pesquisapremios.com/",
+  objective: "Usuario entrar no site e responder pesquisas",
+  audience: "Pessoas de 18 a 45 anos com tempo para responder pesquisas e interesse em ganhar algo em troca dentro das regras do site.",
+  rewards: ["Netflix R$35", "Netflix R$50", "iFood R$35", "iFood R$50", "Spotify R$35"],
+  style: "Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult when useful, survey app UI, named gift cards Netflix R$35/R$50, iFood R$35/R$50 and Spotify R$35, no money imagery, no official logos",
+  rules: [
+    "nao prometer Pix",
+    "nao prometer recargas",
+    "nao prometer saque, renda, lucro ou ganho garantido",
+    "nao prometer mudanca de vida",
+    "nao usar aposta",
+    "Koins sao pontos internos",
+    "recompensas dependem de disponibilidade, estoque, campanha, perfil e regras"
+  ]
+};
+const PESQUISA_PREMIOS_REWARDS = PESQUISA_PREMIOS_BRAND.rewards.join(", ");
+const PESQUISA_PREMIOS_RULES = PESQUISA_PREMIOS_BRAND.rules.join("; ");
 
 const seedData = {
   sites: [],
@@ -629,25 +648,27 @@ function automationGenerationInput(automation, site) {
   const period = plainText(automation.name).includes("tarde") ? "tarde" : "manha";
   return {
     siteId: site.id,
-    siteName: site.name || "Pesquisa Premios",
-    siteUrl: site.url || "https://pesquisapremios.com/",
-    objective: site.objective || "Gerar cadastros e uso do Pesquisa Premios",
+    siteName: site.name || PESQUISA_PREMIOS_BRAND.name,
+    siteUrl: site.url || PESQUISA_PREMIOS_BRAND.url,
+    objective: PESQUISA_PREMIOS_BRAND.objective,
     channel: automationTargetChannel(automation),
     title: `${automation.name} - ${new Date().toLocaleDateString("pt-BR")}`,
     body: "",
     prompt: [
       `Execucao manual do botao Rodar para a rotina ${automation.name}.`,
       `Criar 1 rascunho organico para o periodo da ${period}.`,
-      "A legenda deve instigar sem explicar demais: hook curto, fluxo simples de responder pesquisas, acumular Koins e resgatar gift cards/premios disponiveis.",
+      "A legenda deve instigar sem explicar demais: hook curto, fluxo simples de responder pesquisas, acumular Koins e resgatar gift cards do catalogo permitido.",
       "Sempre chamar para clicar no link da bio.",
       "Variar abertura, ritmo e exemplo de premio em relacao aos posts recentes.",
-      "Nao prometer premio certo, renda, saque ou ganho garantido.",
+      `Publico: ${PESQUISA_PREMIOS_BRAND.audience}`,
+      `Catalogo permitido: ${PESQUISA_PREMIOS_REWARDS}.`,
+      `Regras: ${PESQUISA_PREMIOS_RULES}.`,
       recent ? `Posts recentes para nao repetir: ${recent}` : ""
     ].filter(Boolean).join(" "),
-    improvementPrompt: "Pesquisa Premios brand palette, pessoa brasileira, smartphone, gift cards Uber/iFood/Netflix/Spotify como texto simples, sem moedas, dinheiro ou logos oficiais.",
+    improvementPrompt: "Pesquisa Premios brand palette, pessoa brasileira quando fizer sentido, smartphone, pesquisas, Koins como pontos internos, gift cards Netflix/iFood/Spotify como texto simples, sem moedas, dinheiro, Pix, recargas, apostas ou logos oficiais.",
     image_prompt: "Criar imagem 9:16 premium para social, com uma pessoa brasileira, smartphone, tela de pontos Koins e cards de gift card com texto legivel.",
     imageText: "Koins viram premios",
-    style: "Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult, named gift cards, no money imagery, no official logos",
+    style: PESQUISA_PREMIOS_BRAND.style,
     size: "1024x1536",
     quality: "medium",
     recentContent,
@@ -681,17 +702,22 @@ function generationInput(form) {
   const recentContent = recentContentForGeneration(site.id || "", 8);
   return {
     siteId: site.id || "",
-    siteName: site.name || "Pesquisa Premios",
-    siteUrl: site.url || "",
-    objective: site.objective || "Gerar confianca e cadastros para pesquisas com Koins",
+    siteName: site.name || PESQUISA_PREMIOS_BRAND.name,
+    siteUrl: site.url || PESQUISA_PREMIOS_BRAND.url,
+    objective: PESQUISA_PREMIOS_BRAND.objective,
     channel: form.elements.channel?.value || "Threads",
     title: form.elements.title?.value || "",
     body: form.elements.body?.value || "",
-    prompt: form.elements.ai_prompt?.value || form.elements.improvement_prompt?.value || "",
+    prompt: [
+      form.elements.ai_prompt?.value || form.elements.improvement_prompt?.value || "",
+      `Publico do Pesquisa Premios: ${PESQUISA_PREMIOS_BRAND.audience}`,
+      `Catalogo permitido: ${PESQUISA_PREMIOS_REWARDS}.`,
+      `Regras fixas: ${PESQUISA_PREMIOS_RULES}.`
+    ].filter(Boolean).join(" "),
     improvementPrompt: form.elements.improvement_prompt?.value || "",
     image_prompt: form.elements.improvement_prompt?.value || form.elements.body?.value || "",
     imageText: form.elements.image_text?.value || "",
-    style: form.elements.image_style?.value || "",
+    style: form.elements.image_style?.value || PESQUISA_PREMIOS_BRAND.style,
     size: form.elements.image_size?.value || "1024x1536",
     quality: form.elements.image_quality?.value || "medium",
     durationSeconds: Number(form.elements.video_duration?.value || 8),
