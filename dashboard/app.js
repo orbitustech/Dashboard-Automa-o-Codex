@@ -99,7 +99,7 @@ const codexContentPlans = [
     siteLabel: "Pesquisa Premios",
     contentType: "post",
     view: "content",
-    sourceLabel: "Vercel Cron ativo",
+    sourceLabel: "AWS EventBridge ativo",
     title: "2 rascunhos organicos por dia",
     period: "27/05 a 31/05/2026; depois continua diario",
     start: "2026-05-27T00:00:00-03:00",
@@ -107,13 +107,13 @@ const codexContentPlans = [
     totalDrafts: 10,
     cadence: "2 rascunhos por dia",
     status: "ativa",
-    owner: "Vercel",
+    owner: "AWS EventBridge",
     guardrail: "Cria apenas rascunhos no Supabase. Voce aprova e escolhe Postar agora ou Agendar.",
     windows: [
       {
         label: "Alvo 14:00",
         time: "13:30",
-        output: "Vercel dispara meia hora antes para compensar atraso do plano gratis."
+        output: "AWS dispara meia hora antes para compensar delay e preparar o rascunho."
       },
       {
         label: "Alvo 18:00",
@@ -516,10 +516,11 @@ async function testBackend(showToast = true) {
     const openAiReady = payload.configured?.openai;
     const geminiReady = payload.configured?.gemini;
     const authReady = payload.configured?.awsLogin || adminReady;
-    const label = uploadReady && bufferReady && openAiReady && geminiReady && authReady ? "Backend pronto" : "Backend incompleto";
-    updateBackendStatus(label, uploadReady && bufferReady && openAiReady && geminiReady && authReady ? "ok" : "warn");
+    const mediaStorage = payload.configured?.mediaStorage || (uploadReady ? "supabase" : "disabled");
+    const label = bufferReady && openAiReady && geminiReady && authReady ? "Backend pronto" : "Backend incompleto";
+    updateBackendStatus(label, bufferReady && openAiReady && geminiReady && authReady ? "ok" : "warn");
     if (showToast) {
-      toast(`${label}: Buffer ${bufferReady ? "ok" : "pendente"}, upload ${uploadReady ? "ok" : "pendente"}, OpenAI ${openAiReady ? "ok" : "pendente"}, Gemini ${geminiReady ? "ok" : "pendente"}.`);
+      toast(`${label}: Buffer ${bufferReady ? "ok" : "pendente"}, midia ${mediaStorage === "disabled" ? "sem storage" : "storage ativo"}, OpenAI ${openAiReady ? "ok" : "pendente"}, Gemini ${geminiReady ? "ok" : "pendente"}.`);
     }
     return payload;
   } catch (error) {
@@ -828,16 +829,27 @@ async function generatePostImage(options = {}) {
         filename: form.elements.title?.value || "post-koins"
       })
     });
-    form.elements.asset_url.value = result.media.url;
+    if (result.media.url) {
+      form.elements.asset_url.value = result.media.url;
+      setImagePreview(result.media.url, form.elements.title.value || "Imagem OpenAI", result.media.contentType || "", form);
+    } else if (result.media.dataUrl) {
+      form.elements.asset_url.value = "";
+      setImagePreview(result.media.dataUrl, form.elements.title.value || "Imagem OpenAI temporaria", result.media.contentType || "image/png", form);
+      form.elements.revision_notes.value = [
+        form.elements.revision_notes.value,
+        "Imagem gerada apenas como previa temporaria; nao foi salva em storage. Para publicar com midia, informe uma URL publica externa."
+      ].filter(Boolean).join("\n");
+    } else {
+      throw new Error("A OpenAI retornou imagem, mas nenhum preview utilizavel.");
+    }
     if (result.media.revisedPrompt) {
       form.elements.revision_notes.value = [
         form.elements.revision_notes.value,
         `Prompt revisado pela OpenAI: ${result.media.revisedPrompt}`
       ].filter(Boolean).join("\n");
     }
-    setImagePreview(result.media.url, form.elements.title.value || "Imagem OpenAI", "", form);
     updateBackendStatus("Backend pronto", "ok");
-    toast("Imagem criada e anexada ao post.");
+    toast(result.media.ephemeral ? "Imagem criada como previa temporaria, sem salvar no backend." : "Imagem criada e anexada ao post.");
     return result.media;
   } catch (error) {
     setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Imagem atual", "", form);
