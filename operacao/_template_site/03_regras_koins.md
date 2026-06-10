@@ -1,6 +1,6 @@
-# Regras de Koins
+# Regras de Coins
 
-## Como ganhar Koins
+## Como ganhar Coins
 
 Preencher regras oficiais.
 

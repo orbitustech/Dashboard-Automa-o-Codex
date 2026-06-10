@@ -4,7 +4,7 @@ Data: 2026-05-21
 
 ## Resumo curto
 
-A AWS pode ser usada como infraestrutura de execucao, agendamento, logs, filas, segredos e notificacoes. Ela nao substitui as APIs das redes sociais, CMS, analytics ou sistema de Koins. Para publicar de verdade, cada plataforma ainda precisa liberar token, escopo e permissao.
+A AWS pode ser usada como infraestrutura de execucao, agendamento, logs, filas, segredos e notificacoes. Ela nao substitui as APIs das redes sociais, CMS, analytics ou sistema de Coins. Para publicar de verdade, cada plataforma ainda precisa liberar token, escopo e permissao.
 
 Para o fluxo atual de redes sociais, AWS nao e necessaria. GitHub Actions + Supabase + Buffer ja conseguem cobrir o MVP: Codex cria conteudo, voce aprova no dashboard, o dashboard gera a fila e o workflow envia ao Buffer. A AWS entra quando precisarmos de mais confiabilidade, logs centralizados, filas, arquivos de midia ou automacoes 24/7 mais robustas.
 
@@ -38,7 +38,7 @@ Para o fluxo atual de redes sociais, AWS nao e necessaria. GitHub Actions + Supa
 - Criar artigo no WordPress/Webflow sem token do CMS.
 - Ler GA4/Search Console sem autorizacao Google.
 - Responder e-mail/chat sem conectar o canal.
-- Alterar saldo de Koins sem acesso seguro ao sistema onde o saldo vive.
+- Alterar saldo de Coins sem acesso seguro ao sistema onde o saldo vive.
 - Aprovar decisoes sensiveis sem regra humana.
 
 ## Fluxo desejado: Codex cria, voce aprova, automacao posta
@@ -60,7 +60,7 @@ Comecar sempre com permissoes pequenas:
 - Redes sociais: agendar, nao publicar direto.
 - Analytics: somente leitura.
 - Suporte: gerar sugestao, nao responder direto.
-- Koins/premios: somente leitura.
+- Coins/premios: somente leitura.
 - Saldo, bloqueio, premio negado: sempre aprovacao humana.
 
 ## Credenciais que preciso de voce
@@ -74,7 +74,7 @@ Nao envie senha no chat. Eu preciso apenas das referencias no cofre e dos nomes 
 | Redes | Ferramenta de agendamento escolhida: Metricool, Buffer, Publer, Meta Business Suite ou API direta. |
 | Analytics | GA4, Search Console e permissao de leitura. |
 | Suporte | Gmail/Outlook/chat/rede social que deve entrar no fluxo. |
-| Koins | Origem dos dados: API, banco, painel ou export CSV. |
+| Coins | Origem dos dados: API, banco, painel ou export CSV. |
 
 ## Primeira arquitetura recomendada
 
@@ -107,7 +107,7 @@ EventBridge Scheduler
 2. `weekly-content-plan`: criar tarefas de conteudo no dashboard para aprovacao.
 3. `publication-runner`: procurar distribuicoes aprovadas e criar rascunhos/agendamentos.
 4. `support-triage`: classificar mensagens e sugerir respostas.
-5. `koins-watch`: monitorar premios, resgates pendentes e riscos.
+5. `Coins-watch`: monitorar premios, resgates pendentes e riscos.
 6. `executive-report`: gerar resumo semanal.
 
 ## Ordem de implementacao

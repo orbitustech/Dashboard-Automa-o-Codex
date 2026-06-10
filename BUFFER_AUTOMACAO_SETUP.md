@@ -80,7 +80,7 @@ Na aba `Conteudo`, clique em `Editar` no post e preencha `Prompt de melhoria`.
 Exemplo:
 
 ```txt
-Imagem ficou generica. Refazer com menos texto, mais cara de post social moderno, mais foco em premio e Koins, evitando card branco grande.
+Imagem ficou generica. Refazer com menos texto, mais cara de post social moderno, mais foco em premio e Coins, evitando card branco grande.
 ```
 
 Depois eu leio esse prompt, refaco texto/midia, atualizo o item e devolvo para `Aprovacao`.

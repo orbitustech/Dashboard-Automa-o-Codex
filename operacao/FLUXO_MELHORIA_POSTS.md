@@ -13,7 +13,7 @@ Objetivo: transformar revisao subjetiva em uma instrucao clara para o Codex melh
 ## Exemplos de prompts bons
 
 ```txt
-Imagem ficou generica. Refazer com menos texto, mais cara de post social moderno, sem card branco grande, mais contraste e foco em premio/Koins.
+Imagem ficou generica. Refazer com menos texto, mais cara de post social moderno, sem card branco grande, mais contraste e foco em premio/Coins.
 ```
 
 ```txt
@@ -21,7 +21,7 @@ Texto muito vendedor. Deixar mais natural para Threads, curto, curioso e sem par
 ```
 
 ```txt
-Criar uma versao mais premium: fundo realista de celular respondendo pesquisa, moedas Koins discretas, sem excesso de tipografia.
+Criar uma versao mais premium: fundo realista de celular respondendo pesquisa, saldo de Coins em texto ou barra de progresso, sem moedas, sem excesso de tipografia.
 ```
 
 ```txt

@@ -27,7 +27,7 @@
 - Chat:
 - Comunidade:
 
-## Koins e premios
+## Coins e premios
 
 - Origem dos dados:
 - API disponivel:

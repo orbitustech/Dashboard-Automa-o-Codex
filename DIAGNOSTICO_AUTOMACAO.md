@@ -11,7 +11,7 @@ O dashboard, o Supabase, o GitHub Pages e a base de backend ja estao prontos com
 | Area | Status | Diagnostico |
 |---|---|---|
 | Dashboard | Em ajuste operacional | Publicado no GitHub Pages, com fluxo simplificado de Conteudo, upload JPG/PNG via backend e persistencia no Supabase. |
-| Supabase | Pronto para teste | Tabelas criadas para sites, redes, automacoes, conteudo, distribuicao, Koins, aprovacoes, suporte, FAQ, relatorios e governanca. |
+| Supabase | Pronto para teste | Tabelas criadas para sites, redes, automacoes, conteudo, distribuicao, Coins, aprovacoes, suporte, FAQ, relatorios e governanca. |
 | Backend | Implementado, pendente de segredos | APIs `health`, `upload-media` e `publish` existem. Falta configurar variaveis no host. |
 | Seguranca | Parcial | O dashboard guarda referencia do cofre; backend usa token simples, mas ainda falta login/RLS por usuario. |
 | Fase 3 - Pasta operacional | Feita agora em template | Criada a pasta `operacao/_template_site` com arquivos base para cada site. |
@@ -19,7 +19,7 @@ O dashboard, o Supabase, o GitHub Pages e a base de backend ja estao prontos com
 | Fase 5 - Conteudo automatico | Parcial | Dashboard tem kanban; falta contexto por site preenchido e rotina do Codex para gerar calendario/conteudo. |
 | Fase 6 - Publicacao | Avancada | Fila, UTMs, campos Buffer, upload de midia, backend de disparo, script de envio e GitHub Actions existem; falta configurar segredos e testar envio real. |
 | Fase 7 - Suporte | Parcial | Classificacao, resposta sugerida e FAQ existem; falta conectar canais de suporte/redes. |
-| Fase 8 - Koins/premios | Parcial | Metricas e premios existem; falta API real de saldo, resgates e antifraude. |
+| Fase 8 - Coins/premios | Parcial | Metricas e premios existem; falta API real de saldo, resgates e antifraude. |
 | Fase 9 - Relatorios | Parcial | Relatorios manuais existem; falta automacao diaria/semanal/mensal. |
 
 ## Dados atuais no Supabase
@@ -129,11 +129,11 @@ Preciso de:
 
 Resultado esperado: mensagens entram no dashboard, recebem classificacao e resposta sugerida.
 
-### 6. Koins, premios e antifraude
+### 6. Coins, premios e antifraude
 
 Preciso de:
 
-- Como o saldo de Koins e registrado hoje.
+- Como o saldo de Coins e registrado hoje.
 - Se existe API, banco ou painel administrativo.
 - Regras de resgate.
 - Regras antifraude existentes.
@@ -149,7 +149,7 @@ Resultado esperado: alertas de estoque, resgates pendentes, suspeitas e relatori
 4. Conectar agendador social em modo agendamento.
 5. Conectar analytics/uptime.
 6. Conectar suporte em modo resposta sugerida.
-7. Conectar Koins/premios somente em leitura.
+7. Conectar Coins/premios somente em leitura.
 8. Adicionar login e RLS no Supabase antes de dados sensiveis.
 
 ## Proximo pedido ideal para o Codex

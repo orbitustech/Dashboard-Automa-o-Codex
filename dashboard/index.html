@@ -112,8 +112,8 @@
           <button class="nav-item" data-view="videos" title="Videos">
             <svg><use href="#icon-play"></use></svg><span>Videos</span>
           </button>
-          <button class="nav-item" data-view="koins" title="Koins e premios">
-            <svg><use href="#icon-coin"></use></svg><span>Koins</span>
+          <button class="nav-item" data-view="koins" title="Coins e premios">
+            <svg><use href="#icon-coin"></use></svg><span>Coins</span>
           </button>
           <button class="nav-item" data-view="approvals" title="Aprovacoes">
             <svg><use href="#icon-approval"></use></svg><span>Aprovacoes</span>
@@ -192,7 +192,7 @@
             </div>
             <div class="panel">
               <div class="panel-head">
-                <h4>Funil Koins</h4>
+                <h4>Funil Coins</h4>
                 <span class="muted">Ultimos 7 dias</span>
               </div>
               <div id="funnelChart" class="bar-chart"></div>
@@ -333,7 +333,7 @@
           <form id="contentForm" class="content-editor panel" data-content-mode="post" autocomplete="off">
             <div class="editor-main">
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-              <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Threads - chamada Koins" /></label>
+              <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Threads - chamada Coins" /></label>
               <label class="field">
                 <span>Publicar em</span>
                 <select name="channel">
@@ -437,7 +437,7 @@
               <label class="field"><span>URL publicada/base</span><input name="published_url" placeholder="https://..." /></label>
               <label class="field"><span>UTM source</span><input name="utm_source" placeholder="instagram" /></label>
               <label class="field"><span>UTM medium</span><input name="utm_medium" placeholder="social" /></label>
-              <label class="field"><span>UTM campaign</span><input name="utm_campaign" placeholder="koins_maio" /></label>
+              <label class="field"><span>UTM campaign</span><input name="utm_campaign" placeholder="coins_maio" /></label>
               <label class="field"><span>Observacao</span><input name="note" placeholder="Criar rascunho no CMS" /></label>
               <button class="primary-btn form-submit" type="submit">
                 <svg><use href="#icon-plus"></use></svg><span>Adicionar</span>
@@ -478,7 +478,7 @@
           <form id="videoContentForm" class="content-editor panel" data-content-mode="video" autocomplete="off">
             <div class="editor-main">
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-              <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Reels - chamada Koins" /></label>
+              <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Reels - chamada Coins" /></label>
               <label class="field">
                 <span>Publicar em</span>
                 <select name="channel">
@@ -490,9 +490,9 @@
                 </select>
               </label>
               <label class="field wide-field"><span>Legenda do video</span><textarea name="body" placeholder="Texto que sera enviado junto com o video"></textarea></label>
-              <label class="field wide-field"><span>Pedido para melhorar</span><textarea name="improvement_prompt" placeholder="Ex: video vertical, dinamico, premium, sem moedas, sem Pix, com gift cards e link na bio"></textarea></label>
+              <label class="field wide-field"><span>Pedido para melhorar</span><textarea name="improvement_prompt" placeholder="Ex: video vertical, dinamico, premium, sem moedas ou icones de moeda, sem Pix, sem recarga, com gift cards e link na bio"></textarea></label>
               <div class="ai-workbench wide-field">
-                <label class="field"><span>Pedido para a OpenAI</span><textarea name="ai_prompt" placeholder="Ex: criar roteiro curto para Reels/TikTok mostrando como responder pesquisas e trocar Koins por premios"></textarea></label>
+                <label class="field"><span>Pedido para a OpenAI</span><textarea name="ai_prompt" placeholder="Ex: criar roteiro curto para Reels/TikTok mostrando como responder pesquisas e trocar Coins por premios"></textarea></label>
                 <div class="ai-controls">
                   <label class="field"><span>Estilo do video</span><input name="image_style" value="Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult when useful, survey app UI, named gift cards Netflix R$35/R$50, iFood R$35/R$50 and Spotify R$35, no money imagery, no official logos" /></label>
                   <label class="field"><span>Texto no video</span><input name="image_text" placeholder="Opcional: frase curta na tela" /></label>
@@ -579,14 +579,14 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">Economia interna</p>
-              <h3 id="koins-title">Koins, premios e alertas</h3>
+              <h3 id="koins-title">Coins, premios e alertas</h3>
             </div>
           </div>
           <div class="split-forms">
             <form id="koinMetricForm" class="form-grid panel" autocomplete="off">
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-              <label class="field"><span>Koins emitidos</span><input name="issued" type="number" min="0" value="0" /></label>
-              <label class="field"><span>Koins resgatados</span><input name="redeemed" type="number" min="0" value="0" /></label>
+              <label class="field"><span>Coins emitidos</span><input name="issued" type="number" min="0" value="0" /></label>
+              <label class="field"><span>Coins resgatados</span><input name="redeemed" type="number" min="0" value="0" /></label>
               <label class="field"><span>Resgates pendentes</span><input name="pending_redemptions" type="number" min="0" value="0" /></label>
               <label class="field"><span>Alertas antifraude</span><input name="fraud_alerts" type="number" min="0" value="0" /></label>
               <button class="primary-btn form-submit" type="submit">
@@ -596,7 +596,7 @@
             <form id="prizeForm" class="form-grid panel" autocomplete="off">
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
               <label class="field"><span>Premio</span><input name="name" required placeholder="Netflix R$35, iFood R$50..." /></label>
-              <label class="field"><span>Custo Koins</span><input name="cost" type="number" min="0" value="0" /></label>
+              <label class="field"><span>Custo Coins</span><input name="cost" type="number" min="0" value="0" /></label>
               <label class="field"><span>Estoque</span><input name="stock" type="number" min="0" value="0" /></label>
               <label class="field"><span>Resgates</span><input name="redemptions" type="number" min="0" value="0" /></label>
               <label class="field">
@@ -690,7 +690,7 @@
           </div>
           <form id="faqForm" class="form-grid panel" autocomplete="off">
             <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-            <label class="field"><span>Tema</span><input name="topic" placeholder="premios, Koins, cadastro..." /></label>
+            <label class="field"><span>Tema</span><input name="topic" placeholder="premios, Coins, cadastro..." /></label>
             <label class="field wide-field"><span>Pergunta</span><textarea name="question" required placeholder="Pergunta recorrente"></textarea></label>
             <label class="field wide-field"><span>Resposta</span><textarea name="answer" required placeholder="Resposta aprovada"></textarea></label>
             <label class="field">

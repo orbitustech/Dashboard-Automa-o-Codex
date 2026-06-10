@@ -1,6 +1,6 @@
 # KoinOps Dashboard
 
-Dashboard operacional para gerenciar sites de pesquisa com Koins, premios, redes sociais, automacoes, conteudo e aprovacoes.
+Dashboard operacional para gerenciar sites de pesquisa com Coins, premios, redes sociais, automacoes, conteudo e aprovacoes.
 
 ## Como abrir localmente
 
@@ -22,7 +22,7 @@ Depois acesse `http://127.0.0.1:8765`.
 - Esteira de conteudo em kanban: Rascunho, Aprovacao, Agendado e Publicado
 - Editor simples de post com upload JPG/PNG via backend seguro
 - Fila de publicacao e distribuicao com agendamento, UTMs e link publicado
-- Koins com snapshots de metricas, premios, estoque, resgates e alertas
+- Coins com snapshots de metricas, premios, estoque, resgates e alertas
 - Fila de aprovacao humana com aprovar/rejeitar
 - Suporte e comunidade com classificacao, resposta sugerida e FAQ
 - Relatorios com trafego, posts, cadastros e resumo executivo
@@ -34,7 +34,7 @@ Depois acesse `http://127.0.0.1:8765`.
 - `Redes`: registre os perfis oficiais de cada site e acompanhe cadencia, posts, cliques, crescimento e proxima acao.
 - `Automacoes`: cadastre rotinas que o Codex ou integracoes externas vao executar. Use `Rodar` para registrar uma execucao manual e `Pausar` quando a rotina precisar de revisao.
 - `Conteudo`: acompanhe tarefas editoriais em kanban. Ao aprovar um item, o dashboard cria automaticamente uma tarefa de Buffer para cada rede ativa do site; publicacao real depende do workflow e do `buffer_post_id`.
-- `Koins`: registre uma leitura atual dos saldos e cadastre premios com custo, estoque, resgates e status.
+- `Coins`: registre uma leitura atual dos saldos e cadastre premios com custo, estoque, resgates e status.
 - `Aprovacoes`: envie decisoes sensiveis para fila humana, como campanhas, premios, respostas de suporte ou mudancas de regras.
 - `Suporte`: classifique mensagens por tema, gere uma resposta sugerida, marque como respondida e transforme perguntas repetidas em FAQ.
 - `Relatorios`: registre trafego, posts e cadastros por dia para alimentar os graficos e o resumo executivo.

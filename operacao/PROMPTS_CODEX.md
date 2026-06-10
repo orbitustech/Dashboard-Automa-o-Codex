@@ -2,7 +2,7 @@
 
 ## Auditoria semanal
 
-Analise o site selecionado no dashboard. Verifique status, URL, objetivo, ultima auditoria, proximas acoes, redes, conteudos, premios, aprovacoes, suporte e relatorios. Gere uma lista priorizada de problemas, riscos e proximas acoes. Nao altere saldo de Koins, premios ou usuarios.
+Analise o site selecionado no dashboard. Verifique status, URL, objetivo, ultima auditoria, proximas acoes, redes, conteudos, premios, aprovacoes, suporte e relatorios. Gere uma lista priorizada de problemas, riscos e proximas acoes. Nao altere saldo de Coins, premios ou usuarios.
 
 ## Conteudo semanal
 
@@ -10,7 +10,7 @@ Usando o contexto do site em `operacao/<site>/`, gere um calendario de conteudo 
 
 ## Revisao de risco
 
-Revise todos os itens pendentes de aprovacao, suporte, premios e distribuicao. Classifique cada item como baixo, medio ou alto. Explique por que exige aprovacao humana quando envolver promessa de premio, saldo de Koins, reclamacao, fraude, dados pessoais ou reputacao.
+Revise todos os itens pendentes de aprovacao, suporte, premios e distribuicao. Classifique cada item como baixo, medio ou alto. Explique por que exige aprovacao humana quando envolver promessa de premio, saldo de Coins, reclamacao, fraude, dados pessoais ou reputacao.
 
 ## Relatorio executivo
 

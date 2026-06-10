@@ -4,8 +4,8 @@
 
 - URL principal abre corretamente.
 - SSL valido.
-- Paginas de confianca existem: termos, privacidade, suporte, regras de Koins e premios.
-- Cadastro, pesquisa, credito de Koins e resgate estao mapeados.
+- Paginas de confianca existem: termos, privacidade, suporte, regras de Coins e premios.
+- Cadastro, pesquisa, credito de Coins e resgate estao mapeados.
 - Alertas de risco foram registrados no dashboard.
 
 ## Conteudo
@@ -13,7 +13,7 @@
 - Titulo claro e sem promessa exagerada.
 - CTA adequado ao objetivo do site.
 - Nao promete ganho garantido.
-- Regras de Koins e premios estao corretas.
+- Regras de Coins e premios estao corretas.
 - Itens sensiveis foram enviados para aprovacao.
 
 ## Publicacao
@@ -32,7 +32,7 @@
 - Reclamacao, premio, fraude e tema legal foram para aprovacao.
 - Perguntas recorrentes foram consideradas para FAQ.
 
-## Koins e premios
+## Coins e premios
 
 - Estoque revisado.
 - Resgates pendentes registrados.

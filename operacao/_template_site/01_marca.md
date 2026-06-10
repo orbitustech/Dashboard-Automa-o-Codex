@@ -19,7 +19,7 @@ Explique em uma frase o que o site faz e por que alguem deveria confiar nele.
 
 - pesquisa
 - recompensa
-- Koins
+- Coins
 - premio
 - resgate
 

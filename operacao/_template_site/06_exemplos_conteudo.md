@@ -12,6 +12,6 @@ Cole exemplos do que nao deve ser repetido.
 
 - Responder pesquisa.
 - Ver premios disponiveis.
-- Conferir regras de Koins.
+- Conferir regras de Coins.
 - Falar com suporte.
 

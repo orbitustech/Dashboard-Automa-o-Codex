@@ -17,11 +17,11 @@ const PESQUISA_PREMIOS_BRAND = {
   style: "Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult when useful, survey app UI, named gift cards Netflix R$35/R$50, iFood R$35/R$50 and Spotify R$35, no money imagery, no official logos",
   rules: [
     "nao prometer Pix",
-    "nao prometer recargas",
+    "nao mencionar ou prometer recargas",
     "nao prometer saque, renda, lucro ou ganho garantido",
     "nao prometer mudanca de vida",
     "nao usar aposta",
-    "Koins sao pontos internos",
+    "Coins sao pontos internos",
     "recompensas dependem de disponibilidade, estoque, campanha, perfil e regras"
   ]
 };
@@ -84,7 +84,7 @@ const titles = {
   automations: "Automacoes",
   content: "Conteudo",
   videos: "Videos",
-  koins: "Koins e premios",
+  koins: "Coins e premios",
   approvals: "Aprovacoes",
   support: "Suporte",
   reports: "Relatorios",
@@ -694,7 +694,7 @@ function automationGenerationInput(automation, site) {
     prompt: [
       `Execucao manual do botao Rodar para a rotina ${automation.name}.`,
       `Criar 1 rascunho organico para o periodo da ${period}.`,
-      "A legenda deve instigar sem explicar demais: hook curto, fluxo simples de responder pesquisas, acumular Koins e resgatar gift cards do catalogo permitido.",
+      "A legenda deve instigar sem explicar demais: hook curto, fluxo simples de responder pesquisas, acumular Coins e resgatar gift cards do catalogo permitido.",
       "Sempre chamar para clicar no link da bio.",
       "Variar abertura, ritmo e exemplo de premio em relacao aos posts recentes.",
       `Publico: ${PESQUISA_PREMIOS_BRAND.audience}`,
@@ -702,9 +702,9 @@ function automationGenerationInput(automation, site) {
       `Regras: ${PESQUISA_PREMIOS_RULES}.`,
       recent ? `Posts recentes para nao repetir: ${recent}` : ""
     ].filter(Boolean).join(" "),
-    improvementPrompt: "Pesquisa Premios brand palette, pessoa brasileira quando fizer sentido, smartphone, pesquisas, Koins como pontos internos, gift cards Netflix/iFood/Spotify como texto simples, sem moedas, dinheiro, Pix, recargas, apostas ou logos oficiais.",
-    image_prompt: "Criar imagem 9:16 premium para social, com uma pessoa brasileira, smartphone, tela de pontos Koins e cards de gift card com texto legivel.",
-    imageText: "Koins viram premios",
+    improvementPrompt: "Pesquisa Premios brand palette, pessoa brasileira quando fizer sentido, smartphone, pesquisas, Coins como pontos internos em texto/progresso, gift cards Netflix/iFood/Spotify como texto simples, sem qualquer moeda, sem icone de moeda, sem dinheiro, Pix, recargas, apostas ou logos oficiais.",
+    image_prompt: "Criar imagem 9:16 premium para social, com uma pessoa brasileira, smartphone, tela de pontos Coins em texto/progresso e cards de gift card com texto legivel. Nao incluir moedas ou icones de moeda.",
+    imageText: "Coins viram premios",
     style: PESQUISA_PREMIOS_BRAND.style,
     size: "1024x1536",
     quality: "medium",
@@ -826,7 +826,7 @@ async function generatePostImage(options = {}) {
       body: JSON.stringify({
         ...input,
         prompt: input.improvementPrompt || input.body || input.prompt,
-        filename: form.elements.title?.value || "post-koins"
+        filename: form.elements.title?.value || "post-coins"
       })
     });
     if (result.media.url) {
@@ -878,7 +878,7 @@ async function generatePostVideo(options = {}) {
       body: JSON.stringify({
         ...input,
         prompt: input.improvementPrompt || input.body || input.prompt,
-        filename: form.elements.title?.value || "video-koins"
+        filename: form.elements.title?.value || "video-coins"
       })
     });
     const operationName = start.operation?.operationName;
@@ -892,7 +892,7 @@ async function generatePostVideo(options = {}) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           operationName,
-          filename: form.elements.title?.value || "video-koins"
+          filename: form.elements.title?.value || "video-coins"
         })
       });
       if (status.done && status.media?.url) {
@@ -1451,7 +1451,7 @@ function render() {
   renderContent();
   renderVideos();
   renderDistribution();
-  renderKoins();
+  renderCoins();
   renderApprovals();
   renderSupport();
   renderFaq();
@@ -1638,7 +1638,7 @@ function renderFunnel() {
   const values = [
     { label: "Cadastros", value: reportTotals.signups, max: Math.max(10, reportTotals.signups), color: "green" },
     { label: "Trafego", value: reportTotals.traffic, max: Math.max(100, reportTotals.traffic), color: "" },
-    { label: "Koins", value: koins.issued, max: Math.max(100, koins.issued), color: "amber" },
+    { label: "Coins", value: koins.issued, max: Math.max(100, koins.issued), color: "amber" },
     { label: "Resgates", value: koins.pendingRedemptions, max: Math.max(20, koins.pendingRedemptions), color: "" }
   ];
   qs("#funnelChart").innerHTML = values.map((item) => `
@@ -1888,12 +1888,12 @@ function renderDistribution() {
   );
 }
 
-function renderKoins() {
+function renderCoins() {
   const prizes = filtered(state.prizes);
   const koins = currentKoinTotals();
   const coinKpis = [
-    { label: "Koins emitidos", value: koins.issued.toLocaleString("pt-BR"), hint: "ultima metrica por site" },
-    { label: "Koins resgatados", value: koins.redeemed.toLocaleString("pt-BR"), hint: "premios pagos" },
+    { label: "Coins emitidos", value: koins.issued.toLocaleString("pt-BR"), hint: "ultima metrica por site" },
+    { label: "Coins resgatados", value: koins.redeemed.toLocaleString("pt-BR"), hint: "premios pagos" },
     { label: "Resgates pendentes", value: koins.pendingRedemptions, hint: "requerem acompanhamento" },
     { label: "Alertas antifraude", value: koins.fraudAlerts, hint: "fila de revisao" },
     { label: "Premios criticos", value: prizes.filter((item) => item.status === "critico").length, hint: "estoque muito baixo" }
@@ -1910,7 +1910,7 @@ function renderKoins() {
     prizes.map((item) => [
       esc(item.name),
       esc(siteName(item.site_id)),
-      `${item.cost.toLocaleString("pt-BR")} Koins`,
+      `${item.cost.toLocaleString("pt-BR")} Coins`,
       esc(item.stock),
       esc(item.redemptions),
       statusChip(item.status),
@@ -2690,7 +2690,7 @@ function approvalPayload(data) {
 function suggestedReplyFor(category, message) {
   const cleanMessage = message ? ` Sobre sua mensagem: "${message.slice(0, 120)}"` : "";
   const templates = {
-    duvida: `Oi! Obrigado por chamar. Vamos te orientar com clareza.${cleanMessage} Se a duvida for sobre Koins ou premios, confira tambem as regras dentro da sua conta.`,
+    duvida: `Oi! Obrigado por chamar. Vamos te orientar com clareza.${cleanMessage} Se a duvida for sobre Coins ou premios, confira tambem as regras dentro da sua conta.`,
     elogio: "Muito obrigado pelo retorno! Ficamos felizes em saber que a experiencia esta ajudando. Vamos continuar melhorando.",
     reclamacao: "Obrigado por avisar. Vamos analisar o caso com cuidado e retornar com uma posicao. Para seguranca, nao envie senha ou dados sensiveis por aqui.",
     premio: "Obrigado por falar sobre o premio. Vamos conferir o status do resgate e as regras aplicaveis antes de confirmar qualquer prazo.",
@@ -3076,7 +3076,7 @@ qs("#distributionForm").addEventListener("submit", (event) => {
 
 qs("#koinMetricForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "koinMetrics", koinMetricPayload, "Metrica de Koins");
+  addCollectionRecord(event.currentTarget, "koinMetrics", koinMetricPayload, "Metrica de Coins");
 });
 
 qs("#prizeForm").addEventListener("submit", (event) => {

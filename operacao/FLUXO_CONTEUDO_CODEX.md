@@ -17,7 +17,7 @@ Eu posso:
 Voce aprova:
 
 - Promessas sobre premios.
-- Regras de Koins.
+- Regras de Coins.
 - Comparacoes com concorrentes.
 - Comunicados sensiveis.
 - Respostas de reclamacao.
@@ -50,7 +50,7 @@ Enquanto nao houver tokens e integracoes revisadas, a automacao nao publica fora
 ## Prompt de producao semanal
 
 ```txt
-Codex, crie o calendario de conteudo da semana para o site [nome]. Use o contexto em operacao/[site]. Gere 5 ideias, 3 posts curtos, 1 artigo, 1 FAQ e 1 e-mail. Classifique o risco de cada item e mande para aprovacao tudo que citar premios, Koins, prazos, ganhos ou regras.
+Codex, crie o calendario de conteudo da semana para o site [nome]. Use o contexto em operacao/[site]. Gere 5 ideias, 3 posts curtos, 1 artigo, 1 FAQ e 1 e-mail. Classifique o risco de cada item e mande para aprovacao tudo que citar premios, Coins, prazos, ganhos ou regras.
 ```
 
 ## Prompt de adaptacao multicanal

@@ -18,12 +18,12 @@
 ## Regras de comunicacao
 
 - Nao prometer Pix ou outras formas de pagamento.
-- Nao prometer recargas.
+- Nao mencionar ou prometer recargas; o produto nao oferece recargas.
 - Nao prometer ganho garantido.
 - Nao prometer premio certo.
 - Nao prometer renda, saque, lucro ou mudanca de vida.
 - Nao usar linguagem de aposta.
-- Tratar Koins como pontos internos do site.
+- Tratar Coins como pontos internos do site.
 - Sempre lembrar que recompensas dependem de disponibilidade, estoque, campanha, perfil e regras.
 
 ## Paleta visual
@@ -35,8 +35,8 @@
 
 ## Direcao para posts
 
-A legenda deve instigar a pessoa a testar o site sem parecer promessa. O fluxo deve ser explicado de forma rasa e dinamica: responder pesquisas, acumular Koins e resgatar gift cards disponiveis. O CTA deve sempre apontar para o link da bio.
+A legenda deve instigar a pessoa a testar o site sem parecer promessa. O fluxo deve ser explicado de forma rasa e dinamica: responder pesquisas, acumular Coins e resgatar gift cards disponiveis. O CTA deve sempre apontar para o link da bio.
 
 ## Direcao para imagem e video
 
-Usar visual premium em formato vertical, com interface de pesquisa/recompensas, Koins como pontos internos e gift cards em texto simples. Pode ter pessoa brasileira quando ajudar a humanizar, mas nao deve depender sempre da mesma cena de pessoa segurando celular.
+Usar visual premium em formato vertical, com interface de pesquisa/recompensas, Coins como pontos internos em texto, saldo ou barra de progresso e gift cards em texto simples. Pode ter pessoa brasileira quando ajudar a humanizar, mas nao deve depender sempre da mesma cena de pessoa segurando celular. As imagens e videos nao devem conter nenhum tipo de moeda, icone de moeda, ficha, token circular, dinheiro, Pix ou recarga.

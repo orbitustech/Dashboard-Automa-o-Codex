@@ -2,7 +2,7 @@
 
 ## Perguntas frequentes
 
-### Como ganho Koins?
+### Como ganho Coins?
 
 Preencher.
 
