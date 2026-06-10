@@ -72,6 +72,7 @@ let editingContentId = null;
 let mediaUploadPromise = null;
 let mediaUploadToken = 0;
 let previewObjectUrl = "";
+let mediaStorageUploadEnabled = null;
 let filters = {
   siteId: "all",
   search: ""
@@ -517,6 +518,7 @@ async function testBackend(showToast = true) {
     const geminiReady = payload.configured?.gemini;
     const authReady = payload.configured?.awsLogin || adminReady;
     const mediaStorage = payload.configured?.mediaStorage || (uploadReady ? "supabase" : "disabled");
+    mediaStorageUploadEnabled = mediaStorage !== "disabled" && Boolean(uploadReady);
     const label = bufferReady && openAiReady && geminiReady && authReady ? "Backend pronto" : "Backend incompleto";
     updateBackendStatus(label, bufferReady && openAiReady && geminiReady && authReady ? "ok" : "warn");
     if (showToast) {
@@ -543,6 +545,9 @@ async function publishQueueNow() {
 }
 
 async function uploadMediaFile(file) {
+  if (!(await cloudMediaUploadEnabled())) {
+    throw new Error("Upload em nuvem esta desativado. Salve o post sem subir arquivo ou use uma URL publica externa da midia.");
+  }
   const form = new FormData();
   form.append("media_file", file);
   updateBackendStatus("Enviando midia...", "info");
@@ -552,6 +557,18 @@ async function uploadMediaFile(file) {
   });
   updateBackendStatus("Backend pronto", "ok");
   return result.media.url;
+}
+
+async function cloudMediaUploadEnabled() {
+  if (mediaStorageUploadEnabled !== null) return mediaStorageUploadEnabled;
+  try {
+    const payload = await backendRequest("/api/health", { method: "GET", auth: false });
+    mediaStorageUploadEnabled = payload.configured?.mediaStorage !== "disabled" && Boolean(payload.configured?.upload);
+  } catch (error) {
+    mediaStorageUploadEnabled = false;
+    updateBackendStatus("Midia sem storage", "warn");
+  }
+  return mediaStorageUploadEnabled;
 }
 
 function contentForms() {
@@ -592,6 +609,14 @@ async function replaceContentMediaFromFile(file, form = activeContentForm()) {
   const localPreviewUrl = URL.createObjectURL(file);
   form.elements.asset_url.value = "";
   setImagePreview(localPreviewUrl, file.name, file.type, form);
+
+  if (!(await cloudMediaUploadEnabled())) {
+    form.elements.asset_url.value = previousUrl;
+    form.elements.media_file.value = "";
+    updateBackendStatus("Midia sem storage", "warn");
+    toast("Preview local carregado. Como o storage esta desligado, use uma URL publica externa para publicar com midia.");
+    return "";
+  }
 
   const currentUpload = (async () => {
     try {
@@ -2394,9 +2419,15 @@ async function saveContent(form) {
     const data = new FormData(form);
     const mediaFile = form.elements.media_file?.files?.[0];
     if (mediaFile) {
-      const uploadedUrl = await uploadMediaFile(mediaFile);
-      data.set("asset_url", uploadedUrl);
-      form.elements.asset_url.value = uploadedUrl;
+      if (await cloudMediaUploadEnabled()) {
+        const uploadedUrl = await uploadMediaFile(mediaFile);
+        data.set("asset_url", uploadedUrl);
+        form.elements.asset_url.value = uploadedUrl;
+      } else {
+        data.set("asset_url", form.elements.asset_url.value || "");
+        form.elements.media_file.value = "";
+        toast("Arquivo local ignorado porque o storage esta desligado. O restante do post foi salvo.");
+      }
     }
     const payload = contentPayload(data, contentFormMode(form));
     if (editingContentId) {
