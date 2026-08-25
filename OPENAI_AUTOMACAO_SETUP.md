@@ -24,7 +24,7 @@ Opcionais:
    - `Criar texto + imagem`: faz as duas etapas.
 5. Revise tudo.
 6. Salve como `Rascunho` ou envie para `Aprovacao`.
-7. Somente depois de aprovar o post entra na fila do Buffer.
+7. Somente depois de aprovar o post entra na fila de distribuicao para publicacao.
 
 ## Regra operacional
 

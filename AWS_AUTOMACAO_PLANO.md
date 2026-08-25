@@ -6,7 +6,7 @@ Data: 2026-05-21
 
 A AWS pode ser usada como infraestrutura de execucao, agendamento, logs, filas, segredos e notificacoes. Ela nao substitui as APIs das redes sociais, CMS, analytics ou sistema de Coins. Para publicar de verdade, cada plataforma ainda precisa liberar token, escopo e permissao.
 
-Para o fluxo atual de redes sociais, AWS nao e necessaria. GitHub Actions + Supabase + Buffer ja conseguem cobrir o MVP: Codex cria conteudo, voce aprova no dashboard, o dashboard gera a fila e o workflow envia ao Buffer. A AWS entra quando precisarmos de mais confiabilidade, logs centralizados, filas, arquivos de midia ou automacoes 24/7 mais robustas.
+Para o fluxo atual de redes sociais, AWS nao e necessaria. GitHub Actions + Supabase + APIs oficiais das redes ja conseguem cobrir o MVP: a automacao gera o rascunho de conteudo com OpenAI/Gemini, voce aprova no dashboard, o dashboard gera a fila e o workflow publica direto em cada rede. A AWS entra quando precisarmos de mais confiabilidade, logs centralizados, filas, arquivos de midia ou automacoes 24/7 mais robustas.
 
 ## Papel da AWS
 
@@ -41,9 +41,9 @@ Para o fluxo atual de redes sociais, AWS nao e necessaria. GitHub Actions + Supa
 - Alterar saldo de Coins sem acesso seguro ao sistema onde o saldo vive.
 - Aprovar decisoes sensiveis sem regra humana.
 
-## Fluxo desejado: Codex cria, voce aprova, automacao posta
+## Fluxo desejado: automacao cria, voce aprova, automacao posta
 
-1. Codex gera ideias, calendario, post, artigo, e-mail ou FAQ.
+1. A automacao gera ideias, calendario e posts usando OpenAI/Gemini.
 2. O item entra no dashboard como `Aprovacao` ou `Agendado`.
 3. Voce revisa e aprova.
 4. O item aprovado entra em `distribution_tasks`.
@@ -71,7 +71,7 @@ Nao envie senha no chat. Eu preciso apenas das referencias no cofre e dos nomes 
 |---|---|
 | AWS | Regiao preferida, nome da conta/projeto, se posso usar IAM/Secrets Manager/Lambda/EventBridge. |
 | CMS | Ferramenta, URL admin, permissao desejada e referencia do token no cofre. |
-| Redes | Ferramenta de agendamento escolhida: Metricool, Buffer, Publer, Meta Business Suite ou API direta. |
+| Redes | Rota de publicacao: API oficial direta de cada rede (Instagram, Threads, Facebook, TikTok, LinkedIn, X). |
 | Analytics | GA4, Search Console e permissao de leitura. |
 | Suporte | Gmail/Outlook/chat/rede social que deve entrar no fluxo. |
 | Coins | Origem dos dados: API, banco, painel ou export CSV. |
@@ -81,12 +81,12 @@ Nao envie senha no chat. Eu preciso apenas das referencias no cofre e dos nomes 
 Para agora, manter simples:
 
 ```txt
-Codex
+OpenAI/Gemini (via cron)
   -> Supabase content_items
   -> Voce aprova no dashboard
   -> distribution_tasks automaticas
   -> GitHub Actions a cada 30 min
-  -> Buffer
+  -> APIs oficiais das redes sociais
 ```
 
 Quando migrar para AWS:

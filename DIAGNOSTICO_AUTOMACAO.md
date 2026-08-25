@@ -16,8 +16,8 @@ O dashboard, o Supabase, o GitHub Pages e a base de backend ja estao prontos com
 | Seguranca | Parcial | O dashboard guarda referencia do cofre; backend usa token simples, mas ainda falta login/RLS por usuario. |
 | Fase 3 - Pasta operacional | Feita agora em template | Criada a pasta `operacao/_template_site` com arquivos base para cada site. |
 | Fase 4 - Auditoria real | Pendente de integracoes | Falta conectar uptime, SSL, SEO, Search Console/Analytics e funil real do site. |
-| Fase 5 - Conteudo automatico | Parcial | Dashboard tem kanban; falta contexto por site preenchido e rotina do Codex para gerar calendario/conteudo. |
-| Fase 6 - Publicacao | Avancada | Fila, UTMs, campos Buffer, upload de midia, backend de disparo, script de envio e GitHub Actions existem; falta configurar segredos e testar envio real. |
+| Fase 5 - Conteudo automatico | Parcial | Dashboard tem kanban; falta contexto por site preenchido em todos os sites (campo Prompt de temas) para a geracao automatica funcionar bem. |
+| Fase 6 - Publicacao | Avancada | Fila, UTMs, adaptadores por rede (APIs oficiais), upload de midia, backend de disparo, script de envio e GitHub Actions existem; falta aprovar cada rede na respectiva plataforma e configurar os tokens. |
 | Fase 7 - Suporte | Parcial | Classificacao, resposta sugerida e FAQ existem; falta conectar canais de suporte/redes. |
 | Fase 8 - Coins/premios | Parcial | Metricas e premios existem; falta API real de saldo, resgates e antifraude. |
 | Fase 9 - Relatorios | Parcial | Relatorios manuais existem; falta automacao diaria/semanal/mensal. |
@@ -48,10 +48,9 @@ Contagem real consultada por SQL:
 - Publicar no GitHub Pages.
 - Criar fila de conteudo, distribuicao, suporte, FAQ, aprovacoes e relatorios.
 - Criar templates de operacao por site.
-- Criar prompts base para o Codex.
 - Criar checklist de aceite para auditoria, conteudo, suporte, relatorios e publicacao.
 - Documentar quais integracoes faltam e quais permissoes devem ser criadas.
-- Preparar a integracao Buffer com scripts e workflow do GitHub Actions.
+- Preparar a integracao com as APIs oficiais das redes, com scripts e workflow do GitHub Actions.
 - Criar backend seguro para upload JPG/PNG e disparo imediato da fila aprovada.
 
 ## Intervencoes que preciso de voce
@@ -61,8 +60,8 @@ Contagem real consultada por SQL:
 Voce precisa:
 
 - Manter senhas reais no 1Password.
-- Copiar a chave Buffer do 1Password para o segredo `BUFFER_API_KEY` do GitHub Actions.
-- Configurar no backend `KOINOPS_ADMIN_TOKEN`, `BUFFER_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` e demais variaveis de `BACKEND_SETUP.md`.
+- Copiar o token de cada rede social do 1Password para o segredo correspondente do GitHub Actions (ver OFFICIAL_APIS_SETUP.md).
+- Configurar no backend `KOINOPS_ADMIN_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, os tokens de cada rede social e demais variaveis de `BACKEND_SETUP.md`.
 - Ativar 2FA em CMS, redes, e-mail, analytics e ferramentas de automacao.
 - Criar usuarios tecnicos separados sempre que a plataforma permitir.
 
@@ -78,21 +77,20 @@ Preciso saber para cada site:
 - Referencia do token no cofre.
 - Permissao desejada: rascunho apenas, agendar ou publicar.
 
-Resultado esperado: Codex criar rascunhos/artigos e atualizar status no dashboard.
+Resultado esperado: gerar rascunhos/artigos automaticamente e atualizar status no dashboard.
 
 ### 3. Publicacao social
 
-Rota escolhida: Buffer.
+Rota escolhida: APIs oficiais de cada rede (sem intermediario tipo Buffer). Adaptadores prontos em `lib/platform-publisher.mjs` para Instagram, Threads, Facebook, TikTok, LinkedIn e X.
 
-Preciso de:
+Preciso de, por rede que for usar:
 
-- Contas/perfis oficiais.
-- Redes conectadas dentro do Buffer.
-- `Buffer Channel ID` preenchido no dashboard para cada perfil.
-- Segredo `BUFFER_API_KEY` configurado no GitHub Actions.
-- Confirmacao se a publicacao deve entrar na fila do Buffer ou ser agendada com horario especifico.
+- App aprovado na plataforma (cada rede tem processo proprio; detalhes em `OFFICIAL_APIS_SETUP.md`).
+- Token de acesso de longa duracao guardado no cofre.
+- `ID oficial/API` preenchido no dashboard para cada perfil (IG User ID, Page ID, author URN, etc.).
+- Segredos da rede configurados no GitHub Actions e no backend (ver `OFFICIAL_APIS_SETUP.md`).
 
-Resultado esperado: fila de distribuicao virar agendamento real.
+Resultado esperado: fila de distribuicao publica de verdade quando aprovada (`Postar agora`) ou quando o horario agendado chega (cron a cada 5 minutos).
 
 ### 4. Analytics e SEO
 
@@ -152,25 +150,15 @@ Resultado esperado: alertas de estoque, resgates pendentes, suspeitas e relatori
 7. Conectar Coins/premios somente em leitura.
 8. Adicionar login e RLS no Supabase antes de dados sensiveis.
 
-## Proximo pedido ideal para o Codex
-
-Use este pedido quando estiver pronto para a proxima etapa:
-
-```txt
-Codex, vamos conectar o primeiro site real. O CMS e [ferramenta], o cofre tem a referencia [referencia], quero permissao apenas para criar rascunhos. Use o dashboard e a pasta operacao para configurar a automacao em modo seguro.
-```
-
 ## Diagnostico AWS
 
 Sua AWS pode ser usada como infraestrutura de automacao: Lambda, EventBridge Scheduler, Secrets Manager, CloudWatch, SQS, SNS/SES, API Gateway e S3. O plano completo esta em `AWS_AUTOMACAO_PLANO.md`.
 
 Ponto importante: AWS nao substitui autorizacao das plataformas. Para postar em CMS, redes sociais, suporte ou e-mail, ainda precisamos dos tokens e permissoes de cada ferramenta.
 
-## Fluxo de conteudo com Codex
+## Fluxo de conteudo automatizado
 
-O fluxo desejado foi registrado em `operacao/FLUXO_CONTEUDO_CODEX.md`:
-
-1. Codex planeja e cria conteudo.
+1. A automacao (OpenAI/Gemini via cron) planeja e cria o rascunho de conteudo.
 2. Dashboard recebe o item como rascunho/aprovacao.
 3. Voce aprova.
 4. Automacao cria tarefa de distribuicao.

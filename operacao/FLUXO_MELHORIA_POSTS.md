@@ -1,6 +1,6 @@
 # Fluxo de melhoria de posts
 
-Objetivo: transformar revisao subjetiva em uma instrucao clara para o Codex melhorar texto, imagem e formato antes de qualquer publicacao.
+Objetivo: transformar revisao subjetiva em uma instrucao clara para a geracao por IA (OpenAI/Gemini) melhorar texto, imagem e formato antes de qualquer publicacao.
 
 ## Como voce usa
 
@@ -28,13 +28,13 @@ Criar uma versao mais premium: fundo realista de celular respondendo pesquisa, s
 TikTok precisa de roteiro em video: gancho nos 2 primeiros segundos, cena a cena, legenda curta e CTA para o site.
 ```
 
-## Como eu uso esse prompt
+## Como o backend usa esse prompt
 
-1. Leio os posts com `improvement_prompt` preenchido.
-2. Reescrevo legenda, roteiro ou estrutura.
-3. Gero ou substituo a midia.
-4. Atualizo `Texto do post`, `Midia URL`, `Notas da revisao` e `Proxima acao`.
-5. Volto o post para `Aprovacao` para voce decidir.
+1. O campo `improvement_prompt` do post entra na chamada para a OpenAI (texto/imagem) ou Gemini (video).
+2. A IA reescreve legenda, roteiro ou estrutura com base no pedido.
+3. A midia e gerada ou substituida.
+4. `Texto do post`, `Midia URL`, `Notas da revisao` e `Proxima acao` sao atualizados no dashboard.
+5. O post volta para `Aprovacao` para voce decidir.
 
 ## Padrao para pedir imagem melhor
 

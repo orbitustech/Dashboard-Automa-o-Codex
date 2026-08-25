@@ -8,25 +8,12 @@ const AUTH_STATE_KEY = "koinops-auth-state";
 const supabaseConfig = window.KOINOPS_SUPABASE || {};
 const backendConfig = window.KOINOPS_BACKEND || {};
 const authDefaults = window.KOINOPS_AUTH || {};
-const PESQUISA_PREMIOS_BRAND = {
-  name: "Pesquisa Premios",
-  url: "https://pesquisapremios.com/",
-  objective: "Usuario entrar no site e responder pesquisas",
-  audience: "Pessoas de 18 a 45 anos com tempo para responder pesquisas e interesse em ganhar algo em troca dentro das regras do site.",
-  rewards: ["Netflix R$35", "Netflix R$50", "iFood R$35", "iFood R$50", "Spotify R$35"],
-  style: "Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult when useful, survey app UI, named gift cards Netflix R$35/R$50, iFood R$35/R$50 and Spotify R$35, no money imagery, no official logos",
-  rules: [
-    "nao prometer Pix",
-    "nao mencionar ou prometer recargas",
-    "nao prometer saque, renda, lucro ou ganho garantido",
-    "nao prometer mudanca de vida",
-    "nao usar aposta",
-    "Coins sao pontos internos",
-    "recompensas dependem de disponibilidade, estoque, campanha, perfil e regras"
-  ]
-};
-const PESQUISA_PREMIOS_REWARDS = PESQUISA_PREMIOS_BRAND.rewards.join(", ");
-const PESQUISA_PREMIOS_RULES = PESQUISA_PREMIOS_BRAND.rules.join("; ");
+const DEFAULT_AUTOMATION_SLOTS = [
+  { name: "Rascunho de post organico 14h", schedule: "Diario 14:00", output: "Rascunho de post organico" },
+  { name: "Rascunho de post organico 18h", schedule: "Diario 18:00", output: "Rascunho de post organico" },
+  { name: "Rascunho de video organico 14h", schedule: "Diario 14:00", output: "Rascunho de video organico" },
+  { name: "Rascunho de video organico 18h", schedule: "Diario 18:00", output: "Rascunho de video organico" }
+];
 
 const seedData = {
   sites: [],
@@ -69,6 +56,7 @@ let state = loadState();
 let currentView = "overview";
 let syncMode = "local";
 let editingContentId = null;
+let editingSiteId = null;
 let mediaUploadPromise = null;
 let mediaUploadToken = 0;
 let previewObjectUrl = "";
@@ -94,7 +82,7 @@ const titles = {
 
 const columns = ["Rascunho", "Aprovacao", "Agendado", "Publicado"];
 const VIDEO_CONTENT_MARKER = "[koinops:video]";
-const codexContentPlans = [
+const automationPlans = [
   {
     id: "pesquisa-premios-vercel-cron",
     siteLabel: "Pesquisa Premios",
@@ -142,7 +130,7 @@ const codexContentPlans = [
       {
         label: "Video tarde",
         time: "15:30",
-        output: "Cria 1 rascunho em Videos, sem publicar e sem consumir Buffer."
+        output: "Cria 1 rascunho em Videos, sem publicar e sem gastar cota de geracao."
       },
       {
         label: "Video noite",
@@ -207,7 +195,7 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
-function cleanBufferChannelId(value) {
+function cleanAccountRef(value) {
   return String(value || "").trim().split(/\s+/)[0] || "";
 }
 
@@ -512,17 +500,19 @@ async function testBackend(showToast = true) {
     updateBackendStatus("Testando backend...", "info");
     const payload = await backendRequest("/api/health", { method: "GET", auth: false });
     const uploadReady = payload.configured?.upload;
-    const bufferReady = payload.configured?.buffer;
+    const socialPlatforms = payload.configured?.socialPlatforms || {};
+    const socialReady = payload.configured?.socialPlatformsReady || Object.values(socialPlatforms).some(Boolean);
+    const socialCount = Object.values(socialPlatforms).filter(Boolean).length;
     const adminReady = payload.configured?.adminToken;
     const openAiReady = payload.configured?.openai;
     const geminiReady = payload.configured?.gemini;
     const authReady = payload.configured?.awsLogin || adminReady;
     const mediaStorage = payload.configured?.mediaStorage || (uploadReady ? "supabase" : "disabled");
     mediaStorageUploadEnabled = mediaStorage !== "disabled" && Boolean(uploadReady);
-    const label = bufferReady && openAiReady && geminiReady && authReady ? "Backend pronto" : "Backend incompleto";
-    updateBackendStatus(label, bufferReady && openAiReady && geminiReady && authReady ? "ok" : "warn");
+    const label = socialReady && openAiReady && geminiReady && authReady ? "Backend pronto" : "Backend incompleto";
+    updateBackendStatus(label, socialReady && openAiReady && geminiReady && authReady ? "ok" : "warn");
     if (showToast) {
-      toast(`${label}: Buffer ${bufferReady ? "ok" : "pendente"}, midia ${mediaStorage === "disabled" ? "sem storage" : "storage ativo"}, OpenAI ${openAiReady ? "ok" : "pendente"}, Gemini ${geminiReady ? "ok" : "pendente"}.`);
+      toast(`${label}: redes sociais ${socialReady ? `${socialCount} conectada(s)` : "nenhuma conectada"}, midia ${mediaStorage === "disabled" ? "sem storage" : "storage ativo"}, OpenAI ${openAiReady ? "ok" : "pendente"}, Gemini ${geminiReady ? "ok" : "pendente"}.`);
     }
     return payload;
   } catch (error) {
@@ -537,11 +527,11 @@ async function publishQueueNow() {
   const result = await backendRequest("/api/publish", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ limit: 10 })
+    body: JSON.stringify({ limit: 10, publish_mode: "now" })
   });
   await syncAllFromSupabase(false);
   updateBackendStatus("Backend pronto", "ok");
-  toast(result.published ? `${result.published} post(s) enviados ao Buffer.` : "Fila processada. Nenhum post novo publicado.");
+  toast(result.published ? `${result.published} post(s) publicados nas redes.` : "Fila processada. Nenhum post novo publicado.");
 }
 
 async function uploadMediaFile(file) {
@@ -710,27 +700,24 @@ function automationGenerationInput(automation, site) {
   const period = plainText(automation.name).includes("tarde") ? "tarde" : "manha";
   return {
     siteId: site.id,
-    siteName: site.name || PESQUISA_PREMIOS_BRAND.name,
-    siteUrl: site.url || PESQUISA_PREMIOS_BRAND.url,
-    objective: PESQUISA_PREMIOS_BRAND.objective,
+    siteName: site.name || "",
+    siteUrl: site.url || "",
+    objective: site.objective || "",
+    contentPrompt: site.content_prompt || "",
     channel: automationTargetChannel(automation),
     title: `${automation.name} - ${new Date().toLocaleDateString("pt-BR")}`,
     body: "",
     prompt: [
       `Execucao manual do botao Rodar para a rotina ${automation.name}.`,
       `Criar 1 rascunho organico para o periodo da ${period}.`,
-      "A legenda deve instigar sem explicar demais: hook curto, fluxo simples de responder pesquisas, acumular Coins e resgatar gift cards do catalogo permitido.",
-      "Sempre chamar para clicar no link da bio.",
-      "Variar abertura, ritmo e exemplo de premio em relacao aos posts recentes.",
-      `Publico: ${PESQUISA_PREMIOS_BRAND.audience}`,
-      `Catalogo permitido: ${PESQUISA_PREMIOS_REWARDS}.`,
-      `Regras: ${PESQUISA_PREMIOS_RULES}.`,
+      "A legenda deve instigar sem explicar demais: hook curto, clareza sobre o que o site oferece, CTA coerente com o site.",
+      "Variar abertura e ritmo em relacao aos posts recentes.",
       recent ? `Posts recentes para nao repetir: ${recent}` : ""
     ].filter(Boolean).join(" "),
-    improvementPrompt: "Pesquisa Premios brand palette, pessoa brasileira quando fizer sentido, smartphone, pesquisas, Coins como pontos internos em texto/progresso, gift cards Netflix/iFood/Spotify como texto simples, sem qualquer moeda, sem icone de moeda, sem dinheiro, Pix, recargas, apostas ou logos oficiais.",
-    image_prompt: "Criar imagem 9:16 premium para social, com uma pessoa brasileira, smartphone, tela de pontos Coins em texto/progresso e cards de gift card com texto legivel. Nao incluir moedas ou icones de moeda.",
-    imageText: "Coins viram premios",
-    style: PESQUISA_PREMIOS_BRAND.style,
+    improvementPrompt: "",
+    image_prompt: "Criar imagem 9:16 premium para social, coerente com o tema do site.",
+    imageText: "",
+    style: "",
     size: "1024x1536",
     quality: "medium",
     recentContent,
@@ -744,7 +731,7 @@ async function runContentDraftAutomation(automation) {
   const result = await backendRequest("/api/create-draft", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slot })
+    body: JSON.stringify({ slot, site_id: automation.site_id, automation_id: automation.id })
   });
   await syncAllFromSupabase(false);
   saveState();
@@ -761,7 +748,7 @@ async function runVideoDraftAutomation(automation) {
   const result = await backendRequest("/api/create-video-draft", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slot })
+    body: JSON.stringify({ slot, site_id: automation.site_id, automation_id: automation.id })
   });
   await syncAllFromSupabase(false);
   saveState();
@@ -781,22 +768,18 @@ function generationInput(form) {
   const recentContent = recentContentForGeneration(site.id || "", 8);
   return {
     siteId: site.id || "",
-    siteName: site.name || PESQUISA_PREMIOS_BRAND.name,
-    siteUrl: site.url || PESQUISA_PREMIOS_BRAND.url,
-    objective: PESQUISA_PREMIOS_BRAND.objective,
+    siteName: site.name || "",
+    siteUrl: site.url || "",
+    objective: site.objective || "",
+    contentPrompt: site.content_prompt || "",
     channel: form.elements.channel?.value || "Threads",
     title: form.elements.title?.value || "",
     body: form.elements.body?.value || "",
-    prompt: [
-      form.elements.ai_prompt?.value || form.elements.improvement_prompt?.value || "",
-      `Publico do Pesquisa Premios: ${PESQUISA_PREMIOS_BRAND.audience}`,
-      `Catalogo permitido: ${PESQUISA_PREMIOS_REWARDS}.`,
-      `Regras fixas: ${PESQUISA_PREMIOS_RULES}.`
-    ].filter(Boolean).join(" "),
+    prompt: form.elements.ai_prompt?.value || form.elements.improvement_prompt?.value || "",
     improvementPrompt: form.elements.improvement_prompt?.value || "",
     image_prompt: form.elements.improvement_prompt?.value || form.elements.body?.value || "",
     imageText: form.elements.image_text?.value || "",
-    style: form.elements.image_style?.value || PESQUISA_PREMIOS_BRAND.style,
+    style: form.elements.image_style?.value || "",
     size: form.elements.image_size?.value || "1024x1536",
     quality: form.elements.image_quality?.value || "medium",
     durationSeconds: Number(form.elements.video_duration?.value || 8),
@@ -1007,6 +990,7 @@ function normalizeSites(sites) {
     name: site.name || "",
     url: site.url || "",
     objective: site.objective || "",
+    content_prompt: site.content_prompt || "",
     status: site.status || "ativo",
     vault_reference: site.vault_reference || site.vault || "",
     api_type: site.api_type || site.api || site.platform || "",
@@ -1024,7 +1008,7 @@ function normalizeSocials(items) {
     channel: item.channel || "",
     handle: item.handle || "",
     profile_url: item.profile_url || item.url || "",
-    buffer_channel_id: cleanBufferChannelId(item.buffer_channel_id || item.bufferChannelId),
+    buffer_channel_id: cleanAccountRef(item.buffer_channel_id || item.bufferChannelId),
     cadence: item.cadence || "",
     posts_per_month: Number(item.posts_per_month ?? item.posts ?? 0),
     clicks: Number(item.clicks ?? 0),
@@ -1042,7 +1026,7 @@ function normalizeAutomations(items) {
     site_id: item.site_id || item.siteId || "",
     name: item.name || "",
     schedule: item.schedule || "",
-    owner: item.owner || "Codex",
+    owner: item.owner || "Automacao",
     output: item.output || "",
     risk: item.risk || "baixo",
     status: item.status || "ativa",
@@ -1083,7 +1067,7 @@ function normalizeDistribution(items) {
     site_id: item.site_id || item.siteId || "",
     content_id: item.content_id || item.contentId || "",
     target: item.target || "",
-    buffer_channel_id: cleanBufferChannelId(item.buffer_channel_id || item.bufferChannelId),
+    buffer_channel_id: cleanAccountRef(item.buffer_channel_id || item.bufferChannelId),
     buffer_post_id: item.buffer_post_id || item.bufferPostId || "",
     status: item.status || "fila",
     scheduled_for: item.scheduled_for || null,
@@ -1374,7 +1358,7 @@ function plainText(value) {
     .toLowerCase();
 }
 
-function siteForCodexPlan(plan) {
+function siteForPlan(plan) {
   const target = plainText(plan.siteLabel);
   return state.sites.find((site) => plainText(site.name).includes(target) || target.includes(plainText(site.name)));
 }
@@ -1383,8 +1367,8 @@ function contentDateForPlan(item) {
   return item.created_at || item.scheduled_for || item.due_date || "";
 }
 
-function contentItemsForCodexPlan(plan) {
-  const site = siteForCodexPlan(plan);
+function contentItemsForPlan(plan) {
+  const site = siteForPlan(plan);
   const start = new Date(plan.start);
   const end = new Date(plan.end);
   return state.content.filter((item) => {
@@ -1471,7 +1455,7 @@ function render() {
   renderFunnel();
   renderSites();
   renderSocial();
-  renderCodexAutomationPlan();
+  renderAutomationPlan();
   renderAutomations();
   renderContent();
   renderVideos();
@@ -1678,17 +1662,21 @@ function renderFunnel() {
 function renderSites() {
   const sites = filtered(state.sites);
   qs("#sitesTable").innerHTML = tableMarkup(
-    ["Nome do site", "URL", "Objetivo", "Status", "Referencia do cofre", "Tipo de API", "Ultima auditoria", "Proxima acao", "Acoes"],
+    ["Nome do site", "URL", "Objetivo", "Prompt de temas", "Status", "Referencia do cofre", "Tipo de API", "Ultima auditoria", "Proxima acao", "Acoes"],
     sites.map((site) => [
       esc(site.name),
       `<a href="${esc(site.url)}" target="_blank" rel="noreferrer">${esc(site.url)}</a>`,
       esc(site.objective),
+      site.content_prompt
+        ? esc(site.content_prompt.length > 60 ? `${site.content_prompt.slice(0, 60)}...` : site.content_prompt)
+        : `<span class="muted">Nao definido</span>`,
       statusChip(site.status),
       esc(site.vault_reference),
       esc(site.api_type),
       esc(formatDate(site.last_audit)),
       esc(site.next_action),
       rowActions([
+        miniButton("editSite", site.id, "Editar"),
         miniButton("auditSite", site.id, "Auditar"),
         miniButton("deleteSite", site.id, "Excluir", "reject")
       ])
@@ -1710,7 +1698,7 @@ function renderSocial() {
         <div><strong>${esc(item.clicks)}</strong><span>cliques</span></div>
       </div>
       <p class="muted">${esc(item.cadence || "Sem cadencia")} - crescimento ${esc(item.growth)}%</p>
-      <p class="muted">Buffer: ${esc(item.buffer_channel_id || "nao mapeado")}</p>
+      <p class="muted">Conta API: ${esc(item.buffer_channel_id || "nao mapeado")}</p>
       <p class="muted">${esc(item.next_action || "Sem proxima acao")}</p>
       <div class="row-actions">
         ${item.profile_url ? `<a class="mini-btn" href="${esc(item.profile_url)}" target="_blank" rel="noreferrer">Abrir</a>` : ""}
@@ -1720,37 +1708,37 @@ function renderSocial() {
   `).join("") : emptyState("Nenhuma rede encontrada para o filtro atual.");
 }
 
-function renderCodexAutomationPlan() {
-  const root = qs("#codexAutomationPlan");
+function renderAutomationPlan() {
+  const root = qs("#automationPlan");
   if (!root) return;
 
-  root.innerHTML = codexContentPlans.map((plan) => {
-    const site = siteForCodexPlan(plan);
-    const items = contentItemsForCodexPlan(plan);
+  root.innerHTML = automationPlans.map((plan) => {
+    const site = siteForPlan(plan);
+    const items = contentItemsForPlan(plan);
     const waitingReview = items.filter((item) => ["Rascunho", "Aprovacao"].includes(item.status)).length;
-    const sentToBuffer = items.filter((item) => ["Agendado", "Publicado"].includes(item.status)).length;
+    const scheduledOrPublished = items.filter((item) => ["Agendado", "Publicado"].includes(item.status)).length;
     const remaining = Math.max(0, plan.totalDrafts - items.length);
     const isVideoPlan = plan.contentType === "video";
     return `
-      <section class="codex-plan-panel">
-        <div class="codex-plan-head">
+      <section class="automation-plan-panel">
+        <div class="automation-plan-head">
           <div>
             <p class="eyebrow">${esc(plan.sourceLabel || "Automacao ativa")}</p>
             <h4>${esc(plan.title)}</h4>
             <p class="muted">${esc(site?.name || plan.siteLabel)} - ${esc(plan.period)} - ${esc(plan.cadence)}</p>
           </div>
-          <div class="codex-plan-actions">
+          <div class="automation-plan-actions">
             ${statusChip(plan.status)}
             <button class="secondary-btn compact-btn" type="button" data-action="${isVideoPlan ? "openVideos" : "openContent"}">${isVideoPlan ? "Ver Videos" : "Ver Conteudo"}</button>
           </div>
         </div>
-        <div class="codex-plan-metrics">
+        <div class="automation-plan-metrics">
           <article><span>Meta da semana</span><strong>${esc(plan.totalDrafts)}</strong><small>rascunhos</small></article>
           <article><span>Visiveis no painel</span><strong>${esc(items.length)}</strong><small>${isVideoPlan ? "videos" : "posts"} desta semana</small></article>
           <article><span>Para revisar</span><strong>${esc(waitingReview)}</strong><small>rascunho/aprovacao</small></article>
           <article><span>Restantes</span><strong>${esc(remaining)}</strong><small>ate domingo</small></article>
         </div>
-        <div class="codex-schedule-list">
+        <div class="automation-schedule-list">
           ${plan.windows.map((windowItem) => `
             <article>
               <strong>${esc(windowItem.time)}</strong>
@@ -1761,10 +1749,10 @@ function renderCodexAutomationPlan() {
             </article>
           `).join("")}
         </div>
-        <div class="codex-guardrail">
+        <div class="automation-guardrail">
           <strong>Trava de seguranca:</strong>
           <span>${esc(plan.guardrail)}</span>
-          <span>Agendados/publicados: ${esc(sentToBuffer)}</span>
+          <span>Agendados/publicados: ${esc(scheduledOrPublished)}</span>
         </div>
       </section>
     `;
@@ -1849,7 +1837,7 @@ function socialTargetsForContent(content) {
   return state.socials.filter((social) =>
     social.site_id === content.site_id &&
     social.status === "ativo" &&
-    cleanBufferChannelId(social.buffer_channel_id) &&
+    cleanAccountRef(social.buffer_channel_id) &&
     contentMatchesSocial(content, social)
   );
 }
@@ -1857,9 +1845,9 @@ function socialTargetsForContent(content) {
 function missingDistributionTargetsForContent(content) {
   const tasks = state.distribution.filter((task) => task.content_id === content.id);
   return socialTargetsForContent(content).filter((social) => {
-    const channelId = cleanBufferChannelId(social.buffer_channel_id);
+    const channelId = cleanAccountRef(social.buffer_channel_id);
     return !tasks.some((task) =>
-      cleanBufferChannelId(task.buffer_channel_id) === channelId &&
+      cleanAccountRef(task.buffer_channel_id) === channelId &&
       task.status !== "erro"
     );
   });
@@ -1894,7 +1882,7 @@ function nextContentButton(item) {
 function renderDistribution() {
   const tasks = filtered(state.distribution);
   qs("#distributionTable").innerHTML = tableMarkup(
-    ["Conteudo", "Site", "Destino", "Status", "Buffer", "Agendamento", "UTM", "Publicado", "Observacao", "Acoes"],
+    ["Conteudo", "Site", "Destino", "Status", "Conta API", "Agendamento", "UTM", "Publicado", "Observacao", "Acoes"],
     tasks.map((item) => [
       esc(contentTitle(item.content_id)),
       esc(siteName(item.site_id)),
@@ -2086,7 +2074,7 @@ function renderReports() {
       status: stats.errors ? "erro" : "ok"
     },
     {
-      text: `${stats.queuedTasks} tarefa(s) em fila/agendadas, ${stats.bufferAccepted} aceita(s) pelo Buffer e ${stats.publishedTasks} marcada(s) como publicadas.`,
+      text: `${stats.queuedTasks} tarefa(s) em fila/agendadas, ${stats.bufferAccepted} publicada(s) e ${stats.publishedTasks} marcada(s) como publicadas.`,
       status: stats.queuedTasks ? "pendente" : "info"
     },
     {
@@ -2267,7 +2255,58 @@ async function addCollectionRecord(form, collection, payloadFactory, successLabe
   }
 }
 
-async function addSite(form) {
+async function provisionDefaultAutomations(site) {
+  try {
+    for (const template of DEFAULT_AUTOMATION_SLOTS) {
+      const created = await createRecord("automations", {
+        site_id: site.id,
+        name: template.name,
+        schedule: template.schedule,
+        owner: "Automacao",
+        output: template.output,
+        risk: "baixo",
+        status: "ativa",
+        next_action: "Aguardando primeira execucao"
+      });
+      state.automations = [created, ...state.automations.filter((item) => item.id !== created.id)];
+    }
+  } catch (error) {
+    toast(`Site salvo, mas nao foi possivel criar as automacoes padrao: ${error.message}`);
+  }
+}
+
+function setSiteFormMode(siteId = null) {
+  editingSiteId = siteId;
+  const form = qs("#siteForm");
+  const submitLabel = form.querySelector(".form-submit.primary-btn span");
+  const cancel = qs("#cancelSiteEditBtn");
+  if (submitLabel) submitLabel.textContent = siteId ? "Salvar edicao" : "Adicionar";
+  if (cancel) cancel.hidden = !siteId;
+}
+
+function resetSiteForm() {
+  qs("#siteForm").reset();
+  setSiteFormMode(null);
+}
+
+function editSite(siteId) {
+  const site = state.sites.find((item) => item.id === siteId);
+  if (!site) throw new Error("Site nao encontrado.");
+  switchView("sites");
+  const form = qs("#siteForm");
+  form.elements.name.value = site.name || "";
+  form.elements.url.value = site.url || "";
+  form.elements.objective.value = site.objective || "";
+  form.elements.status.value = site.status || "ativo";
+  form.elements.vault_reference.value = site.vault_reference || "";
+  form.elements.api_type.value = site.api_type || "";
+  form.elements.next_action.value = site.next_action || "";
+  form.elements.content_prompt.value = site.content_prompt || "";
+  setSiteFormMode(siteId);
+  form.elements.name.focus();
+}
+
+async function saveSite(form) {
   const data = new FormData(form);
   const site = {
     name: formString(data, "name"),
@@ -2276,10 +2315,20 @@ async function addSite(form) {
     status: formString(data, "status", "ativo"),
     vault_reference: formString(data, "vault_reference"),
     api_type: formString(data, "api_type"),
-    next_action: formString(data, "next_action")
+    next_action: formString(data, "next_action"),
+    content_prompt: formString(data, "content_prompt")
   };
 
   try {
+    if (editingSiteId) {
+      await updateSite(editingSiteId, site);
+      saveState();
+      resetSiteForm();
+      render();
+      toast("Site atualizado.");
+      return;
+    }
+
     const created = await createSite(site);
     state.sites = [created, ...state.sites.filter((item) => item.id !== created.id)];
     saveState();
@@ -2288,6 +2337,9 @@ async function addSite(form) {
     render();
     qs("#siteFilter").value = created.id;
     toast(syncMode === "supabase" ? "Site salvo no Supabase." : "Site salvo no modo local.");
+    await provisionDefaultAutomations(created);
+    saveState();
+    render();
   } catch (error) {
     toast(`Nao foi possivel salvar: ${error.message}`);
   }
@@ -2299,7 +2351,7 @@ function socialPayload(data) {
     channel: formString(data, "channel"),
     handle: formString(data, "handle"),
     profile_url: formString(data, "profile_url"),
-    buffer_channel_id: cleanBufferChannelId(formString(data, "buffer_channel_id")),
+    buffer_channel_id: cleanAccountRef(formString(data, "buffer_channel_id")),
     cadence: formString(data, "cadence"),
     posts_per_month: formNumber(data, "posts_per_month"),
     clicks: formNumber(data, "clicks"),
@@ -2314,7 +2366,7 @@ function automationPayload(data) {
     site_id: requireSite(data),
     name: formString(data, "name"),
     schedule: formString(data, "schedule"),
-    owner: formString(data, "owner", "Codex"),
+    owner: formString(data, "owner", "Automacao"),
     output: formString(data, "output"),
     risk: formString(data, "risk", "baixo"),
     status: formString(data, "status", "ativa"),
@@ -2458,7 +2510,7 @@ function distributionPayload(data) {
     site_id: requireSite(data),
     content_id: formString(data, "content_id") || null,
     target: formString(data, "target"),
-    buffer_channel_id: cleanBufferChannelId(formString(data, "buffer_channel_id")),
+    buffer_channel_id: cleanAccountRef(formString(data, "buffer_channel_id")),
     status: formString(data, "status", "fila"),
     scheduled_for: formDateTime(data, "scheduled_for"),
     published_at: formString(data, "status") === "publicado" ? new Date().toISOString() : null,
@@ -2506,7 +2558,7 @@ async function createDistributionQueueForContent(content, options = {}) {
   const targets = state.socials.filter((social) =>
     social.site_id === content.site_id &&
     social.status === "ativo" &&
-    cleanBufferChannelId(social.buffer_channel_id) &&
+    cleanAccountRef(social.buffer_channel_id) &&
     contentMatchesSocial(content, social)
   );
   const createdItems = [];
@@ -2514,7 +2566,7 @@ async function createDistributionQueueForContent(content, options = {}) {
   for (const target of targets) {
     const alreadyQueued = state.distribution.some((task) =>
       task.content_id === content.id &&
-      cleanBufferChannelId(task.buffer_channel_id) === cleanBufferChannelId(target.buffer_channel_id) &&
+      cleanAccountRef(task.buffer_channel_id) === cleanAccountRef(target.buffer_channel_id) &&
       task.status !== "erro"
     );
     if (alreadyQueued) continue;
@@ -2525,7 +2577,7 @@ async function createDistributionQueueForContent(content, options = {}) {
       site_id: content.site_id,
       content_id: content.id,
       target: target.channel,
-      buffer_channel_id: cleanBufferChannelId(target.buffer_channel_id),
+      buffer_channel_id: cleanAccountRef(target.buffer_channel_id),
       status: "fila",
       scheduled_for: scheduledFor,
       published_at: null,
@@ -2568,7 +2620,7 @@ async function updatePendingTaskSchedule(contentId, scheduledFor) {
 }
 
 async function sendContentTasksToBackend(contentId, tasks, publishMode) {
-  updateBackendStatus(publishMode === "now" ? "Postando agora..." : "Agendando no Buffer...", "info");
+  updateBackendStatus(publishMode === "now" ? "Postando agora..." : "Agendando publicacao...", "info");
   const body = {
     publish_mode: publishMode,
     content_id: contentId,
@@ -2601,11 +2653,11 @@ async function publishContentNow(contentId) {
 
   const tasks = pendingDistributionTasksForContent(contentId);
   if (!tasks.length) {
-    throw new Error("Nao encontrei tarefa pendente. Se esse post ja foi enviado ao Buffer, edite ou cancele por la para evitar duplicar.");
+    throw new Error("Nao encontrei tarefa pendente. Se esse post ja foi publicado, edite ou cancele a tarefa na aba Distribuicao para evitar duplicar.");
   }
 
   const result = await sendContentTasksToBackend(contentId, tasks, "now");
-  const sent = result.results?.filter((item) => item.sharedNow || item.bufferPostId).length || result.published || 0;
+  const sent = result.results?.filter((item) => item.platformPostId).length || result.published || 0;
   toast(sent ? `${sent} post(s) enviados para publicacao imediata.` : "Nenhum post novo foi publicado. Confira a fila tecnica.");
 }
 
@@ -2617,7 +2669,7 @@ async function publishMissingNetworks(contentId) {
 
   const tasks = pendingDistributionTasksForContent(contentId);
   const result = await sendContentTasksToBackend(contentId, tasks, "now");
-  const sent = result.results?.filter((item) => item.sharedNow || item.bufferPostId).length || result.published || 0;
+  const sent = result.results?.filter((item) => item.platformPostId).length || result.published || 0;
   toast(sent ? `${sent} rede(s) faltante(s) enviadas para publicacao.` : "Nao havia rede faltante pendente. Confira Distribuicao.");
 }
 
@@ -2634,7 +2686,7 @@ async function scheduleContent(contentId) {
     status: "Agendado",
     approved_at: content.approved_at || new Date().toISOString(),
     scheduled_for: scheduledFor,
-    next_action: "Agendado no Buffer"
+    next_action: "Agendado para publicacao"
   };
   await updateRecord("content", contentId, patch);
   await createDistributionQueueForContent({ ...content, ...patch }, { scheduledFor });
@@ -2644,12 +2696,12 @@ async function scheduleContent(contentId) {
 
   const tasks = pendingDistributionTasksForContent(contentId);
   if (!tasks.length) {
-    toast("Agendamento salvo, mas nenhuma nova tarefa Buffer foi criada.");
+    toast("Agendamento salvo, mas nenhuma nova tarefa de publicacao foi criada.");
     return;
   }
 
   const result = await sendContentTasksToBackend(contentId, tasks, "queue");
-  toast(result.published ? `${result.published} post(s) agendados no Buffer.` : "Agendamento salvo. Nenhum post novo foi enviado ao Buffer.");
+  toast(result.published ? `${result.published} post(s) agendados.` : "Agendamento salvo. Nenhum post novo foi enviado.");
 }
 
 async function markContentPublished(contentId) {
@@ -2657,7 +2709,7 @@ async function markContentPublished(contentId) {
   if (!["Agendado", "Aprovacao"].includes(content.status)) {
     throw new Error("So e possivel marcar como publicado um conteudo agendado ou em aprovacao.");
   }
-  const ok = window.confirm("Marcar este conteudo como publicado no dashboard? Isso nao chama o Buffer; apenas atualiza o status local/Supabase.");
+  const ok = window.confirm("Marcar este conteudo como publicado no dashboard? Isso nao publica nas redes; apenas atualiza o status local/Supabase.");
   if (!ok) {
     toast("Acao cancelada.");
     return;
@@ -2854,6 +2906,10 @@ document.addEventListener("click", async (event) => {
   const wasDisabled = actionButton.disabled;
   actionButton.disabled = true;
   try {
+    if (action === "editSite") {
+      editSite(id);
+      toast("Editando site.");
+    }
     if (action === "auditSite") {
       await auditSite(id);
     }
@@ -2946,7 +3002,7 @@ document.addEventListener("click", async (event) => {
       });
       saveState();
       render();
-      toast("Tarefa recolocada na fila do Buffer.");
+      toast("Tarefa recolocada na fila de publicacao.");
     }
     if (action === "suggestReply") {
       const message = state.supportMessages.find((item) => item.id === id);
@@ -3003,8 +3059,10 @@ document.addEventListener("click", async (event) => {
 
 qs("#siteForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addSite(event.currentTarget);
+  saveSite(event.currentTarget);
 });
+
+qs("#cancelSiteEditBtn").addEventListener("click", resetSiteForm);
 
 qs("#socialForm").addEventListener("submit", (event) => {
   event.preventDefault();

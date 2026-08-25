@@ -1,5 +1,11 @@
-import { publishPendingTasks } from "../lib/buffer-publisher.mjs";
+import { publishPendingTasks } from "../lib/platform-publisher.mjs";
 import { readJsonBody, requireOperatorAuth, sendJson, setCors } from "../lib/http.mjs";
+
+// Publicar video no Instagram exige aguardar o processamento do container antes
+// de chamar media_publish; o padrao de 10s do Vercel nao e suficiente.
+export const config = {
+  maxDuration: 60
+};
 
 export default async function handler(req, res) {
   setCors(res);

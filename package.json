@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "publish:buffer": "node scripts/buffer-publish.mjs",
-    "publish:buffer:dry": "node -e \"process.env.DRY_RUN='1'; import('./scripts/buffer-publish.mjs')\""
+    "publish": "node scripts/publish.mjs",
+    "publish:dry": "node -e \"process.env.DRY_RUN='1'; import('./scripts/publish.mjs')\""
   },
   "engines": {
     "node": ">=20"

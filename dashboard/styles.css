@@ -398,11 +398,11 @@ button {
   font-size: 16px;
 }
 
-.codex-plan {
+.automation-plan {
   margin-bottom: 16px;
 }
 
-.codex-plan-panel {
+.automation-plan-panel {
   display: grid;
   gap: 14px;
   padding: 18px;
@@ -413,23 +413,23 @@ button {
   box-shadow: var(--shadow);
 }
 
-.codex-plan-head {
+.automation-plan-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
 }
 
-.codex-plan-head h4 {
+.automation-plan-head h4 {
   margin: 0 0 4px;
   font-size: 18px;
 }
 
-.codex-plan-head p {
+.automation-plan-head p {
   margin: 0;
 }
 
-.codex-plan-actions {
+.automation-plan-actions {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -437,13 +437,13 @@ button {
   justify-content: flex-end;
 }
 
-.codex-plan-metrics {
+.automation-plan-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(130px, 1fr));
   gap: 10px;
 }
 
-.codex-plan-metrics article {
+.automation-plan-metrics article {
   min-height: 86px;
   display: grid;
   align-content: space-between;
@@ -453,24 +453,24 @@ button {
   background: var(--surface);
 }
 
-.codex-plan-metrics span,
-.codex-plan-metrics small {
+.automation-plan-metrics span,
+.automation-plan-metrics small {
   color: var(--muted);
   font-size: 12px;
 }
 
-.codex-plan-metrics strong {
+.automation-plan-metrics strong {
   font-size: 26px;
   line-height: 1;
 }
 
-.codex-schedule-list {
+.automation-schedule-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(220px, 1fr));
   gap: 10px;
 }
 
-.codex-schedule-list article {
+.automation-schedule-list article {
   display: grid;
   grid-template-columns: 70px minmax(0, 1fr);
   gap: 12px;
@@ -481,7 +481,7 @@ button {
   background: var(--surface-soft);
 }
 
-.codex-schedule-list strong {
+.automation-schedule-list strong {
   display: grid;
   place-items: center;
   min-height: 44px;
@@ -491,17 +491,17 @@ button {
   font-size: 18px;
 }
 
-.codex-schedule-list h5,
-.codex-schedule-list p {
+.automation-schedule-list h5,
+.automation-schedule-list p {
   margin: 0;
 }
 
-.codex-schedule-list p {
+.automation-schedule-list p {
   color: var(--muted);
   font-size: 13px;
 }
 
-.codex-guardrail {
+.automation-guardrail {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -1230,8 +1230,8 @@ button {
   .matrix-grid,
   .kanban,
   .workflow-strip,
-  .codex-plan-metrics,
-  .codex-schedule-list {
+  .automation-plan-metrics,
+  .automation-schedule-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1466,13 +1466,13 @@ button {
   .workflow-strip,
   .metric-pair,
   .ai-controls,
-  .codex-plan-metrics,
-  .codex-schedule-list,
-  .codex-plan-head {
+  .automation-plan-metrics,
+  .automation-schedule-list,
+  .automation-plan-head {
     grid-template-columns: 1fr;
   }
 
-  .codex-plan-actions {
+  .automation-plan-actions {
     justify-content: flex-start;
   }
 
@@ -1555,11 +1555,11 @@ button {
     padding: 10px;
   }
 
-  .codex-plan-panel {
+  .automation-plan-panel {
     padding: 12px;
   }
 
-  .codex-schedule-list article {
+  .automation-schedule-list article {
     grid-template-columns: 64px minmax(0, 1fr);
   }
 
