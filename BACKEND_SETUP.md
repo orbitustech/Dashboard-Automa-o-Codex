@@ -74,8 +74,8 @@ Os tokens de cada rede social ainda precisam ser adicionados conforme cada plata
 
 1. Abra `Governanca`.
 2. Em `Backend seguro`, coloque a URL do backend, por exemplo `https://seu-projeto.vercel.app`.
-3. Cole a `KOINOPS_ADMIN_TOKEN`.
-4. Clique em `Salvar conexao`.
+3. Clique em `Salvar conexao`.
+4. Entre com AWS Cognito (o dashboard exige login antes de liberar as abas). O token da sessao autentica as chamadas ao backend, sem precisar colar `KOINOPS_ADMIN_TOKEN` no navegador.
 5. Clique em `Testar`.
 
 A partir dai, a aba `Conteudo` consegue enviar JPG/PNG/MP4 e tambem disparar `Publicar fila agora`. O teste de backend mostra quantas redes sociais ja tem token configurado (`socialPlatforms` em `/api/health`).

@@ -1,6 +1,5 @@
 const STORAGE_KEY = "koinops-dashboard-v3";
 const BACKEND_URL_KEY = "koinops-backend-url";
-const BACKEND_TOKEN_KEY = "koinops-backend-token";
 const AUTH_CONFIG_KEY = "koinops-auth-config";
 const AUTH_SESSION_KEY = "koinops-auth-session";
 const AUTH_VERIFIER_KEY = "koinops-auth-verifier";
@@ -240,10 +239,6 @@ function configuredBackendUrl() {
   return isHostedApp ? window.location.origin : "";
 }
 
-function backendToken() {
-  return localStorage.getItem(BACKEND_TOKEN_KEY) || "";
-}
-
 function normalizeAuthDomain(value) {
   const domain = String(value || "").trim().replace(/\/+$/, "");
   if (!domain) return "";
@@ -303,8 +298,6 @@ function authSession() {
 }
 
 function backendAuthToken() {
-  const adminToken = backendToken();
-  if (adminToken) return adminToken;
   const session = authSession();
   return session?.access_token || session?.id_token || "";
 }
@@ -483,7 +476,7 @@ async function backendRequest(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (options.auth !== false) {
     const token = backendAuthToken();
-    if (!token) throw new Error("Entre com AWS ou configure a chave do painel em Governanca.");
+    if (!token) throw new Error("Entre com AWS para continuar.");
     headers.Authorization = `Bearer ${token}`;
   }
   const response = await fetch(`${baseUrl}${path}`, {
@@ -2122,7 +2115,6 @@ function renderBackendSettings() {
   if (!form) return;
   if (document.activeElement && form.contains(document.activeElement)) return;
   form.elements.backend_url.value = configuredBackendUrl();
-  form.elements.backend_token.value = backendToken();
 }
 
 function renderAuthSettings() {
@@ -3202,11 +3194,8 @@ qs("#backendSettingsForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
   const backendUrl = formString(data, "backend_url").replace(/\/+$/, "");
-  const token = formString(data, "backend_token");
   if (backendUrl) localStorage.setItem(BACKEND_URL_KEY, backendUrl);
   else localStorage.removeItem(BACKEND_URL_KEY);
-  if (token) localStorage.setItem(BACKEND_TOKEN_KEY, token);
-  else localStorage.removeItem(BACKEND_TOKEN_KEY);
   render();
   toast("Conexao do backend salva neste navegador.");
 });

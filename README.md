@@ -42,12 +42,12 @@ Depois acesse `http://127.0.0.1:8765`.
 
 ## Diagnostico e operacao
 
-- `DIAGNOSTICO_AUTOMACAO.md`: mostra o que falta, o que ja foi feito e quais integracoes precisam da sua intervencao.
 - `BACKEND_SETUP.md`: como ativar upload de imagem e publicacao imediata via backend.
+- `AWS_LOGIN_SETUP.md`: como configurar o login AWS Cognito do dashboard.
+- `OPENAI_AUTOMACAO_SETUP.md`: variaveis de ambiente para geracao de texto/imagem com OpenAI.
 - `operacao/FLUXO_MELHORIA_POSTS.md`: como pedir ajustes de texto/imagem pelo campo `Prompt de melhoria`.
 - `operacao/CHECKLIST_ACEITE.md`: criterios de aceite antes de publicar, responder ou registrar automacoes.
 - `operacao/_template_site`: modelo para criar uma pasta de contexto para cada site real.
-- `AWS_AUTOMACAO_PLANO.md`: como usar AWS para rodar automacoes, guardar segredos, agendar tarefas e enviar alertas.
 - `OFFICIAL_APIS_SETUP.md`: passo a passo para aprovar cada rede social, gerar tokens, conectar o GitHub Actions e a fila de publicacao.
 
 ## Publicacao social (APIs oficiais)

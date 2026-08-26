@@ -786,7 +786,6 @@
               </div>
               <form id="backendSettingsForm" class="settings-form" autocomplete="off">
                 <label class="field"><span>URL do backend</span><input name="backend_url" placeholder="https://seu-projeto.vercel.app" /></label>
-                <label class="field"><span>Chave do painel</span><input name="backend_token" type="password" placeholder="KOINOPS_ADMIN_TOKEN" /></label>
                 <div class="row-actions">
                   <button class="secondary-btn" type="submit">Salvar conexao</button>
                   <button class="primary-btn" id="settingsTestBackendBtn" type="button">
@@ -794,7 +793,7 @@
                   </button>
                 </div>
               </form>
-              <p class="muted">A chave do painel fica somente no seu navegador. As API keys reais continuam no backend e no 1Password.</p>
+              <p class="muted">A autenticacao usa o login AWS Cognito. As API keys reais continuam no backend e no 1Password.</p>
             </div>
             <div class="panel">
               <div class="panel-head">
