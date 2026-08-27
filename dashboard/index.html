@@ -109,8 +109,11 @@
           <button class="nav-item" data-view="content" title="Conteudo">
             <svg><use href="#icon-content"></use></svg><span>Conteudo</span>
           </button>
-          <button class="nav-item" data-view="koins" title="Koins e premios">
-            <svg><use href="#icon-coin"></use></svg><span>Koins</span>
+          <button class="nav-item" data-view="videos" title="Videos">
+            <svg><use href="#icon-play"></use></svg><span>Videos</span>
+          </button>
+          <button class="nav-item" data-view="koins" title="Coins e premios">
+            <svg><use href="#icon-coin"></use></svg><span>Coins</span>
           </button>
           <button class="nav-item" data-view="approvals" title="Aprovacoes">
             <svg><use href="#icon-approval"></use></svg><span>Aprovacoes</span>
@@ -189,7 +192,7 @@
             </div>
             <div class="panel">
               <div class="panel-head">
-                <h4>Funil Koins</h4>
+                <h4>Funil Coins</h4>
                 <span class="muted">Ultimos 7 dias</span>
               </div>
               <div id="funnelChart" class="bar-chart"></div>
@@ -220,9 +223,14 @@
             <label class="field"><span>Referencia do cofre</span><input name="vault_reference" required placeholder="Bitwarden: Site Admin" /></label>
             <label class="field"><span>Tipo de API</span><input name="api_type" required placeholder="REST, GraphQL, sem API..." /></label>
             <label class="field"><span>Proxima acao</span><input name="next_action" required placeholder="Configurar auditoria inicial" /></label>
+            <label class="field wide-field">
+              <span>Prompt de temas (guia a geracao de posts)</span>
+              <textarea name="content_prompt" placeholder="Ex: publico, tom de voz, principais temas/ofertas, o que sempre citar, o que nunca prometer, paleta de cores e CTA preferido para este site."></textarea>
+            </label>
             <button class="primary-btn form-submit" type="submit">
               <svg><use href="#icon-plus"></use></svg><span>Adicionar</span>
             </button>
+            <button class="secondary-btn form-submit" id="cancelSiteEditBtn" type="button" hidden>Cancelar edicao</button>
           </form>
           <div id="sitesTable" class="data-table"></div>
         </section>
@@ -239,7 +247,7 @@
             <label class="field"><span>Rede</span><input name="channel" required placeholder="Instagram, TikTok..." /></label>
             <label class="field"><span>Perfil</span><input name="handle" placeholder="@perfil" /></label>
             <label class="field"><span>URL</span><input name="profile_url" placeholder="https://..." /></label>
-            <label class="field"><span>Buffer Channel ID</span><input name="buffer_channel_id" placeholder="ID do canal no Buffer" /></label>
+            <label class="field"><span>ID da conta (API oficial)</span><input name="buffer_channel_id" placeholder="ex: ID da pagina/IG User ID/URN" /></label>
             <label class="field"><span>Cadencia</span><input name="cadence" placeholder="3 posts/semana" /></label>
             <label class="field"><span>Posts/mes</span><input name="posts_per_month" type="number" min="0" value="0" /></label>
             <label class="field"><span>Cliques</span><input name="clicks" type="number" min="0" value="0" /></label>
@@ -268,11 +276,12 @@
               <h3 id="automations-title">Automacoes recorrentes</h3>
             </div>
           </div>
+          <div id="automationPlan" class="automation-plan"></div>
           <form id="automationForm" class="form-grid panel" autocomplete="off">
             <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
             <label class="field"><span>Automacao</span><input name="name" required placeholder="Auditoria diaria" /></label>
             <label class="field"><span>Agenda</span><input name="schedule" placeholder="Diario 09:00" /></label>
-            <label class="field"><span>Dono</span><input name="owner" placeholder="Codex" /></label>
+            <label class="field"><span>Dono</span><input name="owner" placeholder="Nome ou equipe responsavel" /></label>
             <label class="field"><span>Saida</span><input name="output" placeholder="Relatorio, alerta, rascunho..." /></label>
             <label class="field">
               <span>Risco</span>
@@ -310,26 +319,26 @@
             <article><strong>1</strong><span>Criar post</span></article>
             <article><strong>2</strong><span>Revisar imagem e texto</span></article>
             <article><strong>3</strong><span>Aprovar</span></article>
-            <article><strong>4</strong><span>Buffer publica</span></article>
+            <article><strong>4</strong><span>API oficial publica</span></article>
           </div>
 
           <div class="backend-actionbar panel">
             <div>
               <h4>Publicador automatico</h4>
-              <p class="muted">Ao aprovar um post, o dashboard cria a fila. O GitHub Actions publica sozinho; com backend conectado voce tambem pode subir imagem e disparar agora.</p>
+              <p class="muted">Crie o post, envie para revisao e escolha no card aprovado: postar agora ou agendar.</p>
             </div>
             <div class="row-actions">
               <button class="secondary-btn" id="testBackendBtn" type="button">Testar backend</button>
               <button class="primary-btn" id="publishNowBtn" type="button">
-                <svg><use href="#icon-play"></use></svg><span>Publicar fila agora</span>
+                <svg><use href="#icon-play"></use></svg><span>Processar fila pendente</span>
               </button>
             </div>
           </div>
 
-          <form id="contentForm" class="content-editor panel" autocomplete="off">
+          <form id="contentForm" class="content-editor panel" data-content-mode="post" autocomplete="off">
             <div class="editor-main">
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-              <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Threads - chamada Koins" /></label>
+              <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Threads - chamada Coins" /></label>
               <label class="field">
                 <span>Publicar em</span>
                 <select name="channel">
@@ -343,9 +352,10 @@
               <label class="field wide-field"><span>Legenda do post</span><textarea name="body" placeholder="Texto que sera enviado para a rede social"></textarea></label>
               <label class="field wide-field"><span>Pedido para melhorar</span><textarea name="improvement_prompt" placeholder="Ex: deixar mais premium, sem pessoa, estilo flat vector, cores verde e dourado"></textarea></label>
               <div class="ai-workbench wide-field">
-                <label class="field"><span>Pedido para a OpenAI</span><textarea name="ai_prompt" placeholder="Ex: criar um post confiavel para Threads sobre responder pesquisas e trocar Koins por premios"></textarea></label>
+                <label class="field"><span>Pedido para a OpenAI</span><textarea name="ai_prompt" placeholder="Ex: criar um post com angulo diferente: rotina real, curiosidade, catalogo de premios, primeiro passo ou confianca"></textarea></label>
                 <div class="ai-controls">
-                  <label class="field"><span>Estilo da imagem</span><input name="image_style" value="photorealistic premium social media product scene" /></label>
+                  <label class="field"><span>Estilo da imagem</span><input name="image_style" value="Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult when useful, survey app UI, named gift cards Netflix R$35/R$50, iFood R$35/R$50 and Spotify R$35, no money imagery, no official logos" /></label>
+                  <label class="field"><span>Texto na imagem</span><input name="image_text" placeholder="Opcional: deixe vazio para variar" /></label>
                   <label class="field">
                     <span>Tamanho</span>
                     <select name="image_size">
@@ -364,9 +374,9 @@
                   </label>
                 </div>
                 <div class="row-actions">
-                  <button class="secondary-btn" id="generateTextBtn" type="button">Criar texto</button>
-                  <button class="secondary-btn" id="generateImageBtn" type="button">Criar imagem</button>
-                  <button class="primary-btn" id="generateCompleteBtn" type="button">
+                  <button class="secondary-btn" id="generateTextBtn" data-ai-button type="button">Criar texto</button>
+                  <button class="secondary-btn" id="generateImageBtn" data-ai-button type="button">Criar imagem</button>
+                  <button class="primary-btn" id="generateCompleteBtn" data-ai-button type="button">
                     <svg><use href="#icon-play"></use></svg><span>Criar texto + imagem</span>
                   </button>
                 </div>
@@ -378,11 +388,11 @@
               <label class="upload-box" for="mediaFileInput">
                 <svg><use href="#icon-upload"></use></svg>
                 <strong>Imagem JPG/PNG</strong>
-                <span>Escolha uma imagem do seu computador</span>
+                <span>Storage desligado: use URL publica externa para publicar com midia</span>
                 <input id="mediaFileInput" name="media_file" type="file" accept="image/png,image/jpeg" />
               </label>
               <div id="imagePreview" class="upload-preview" hidden></div>
-              <label class="field"><span>Ou usar URL da imagem</span><input name="asset_url" placeholder="https://imagem-publica.png" /></label>
+              <label class="field"><span>URL publica da imagem</span><input name="asset_url" placeholder="https://midia-publica.png" /></label>
               <label class="field">
                 <span>Status</span>
                 <select name="status">
@@ -401,6 +411,7 @@
                 </select>
               </label>
               <label class="field"><span>Data alvo</span><input name="due_date" type="date" /></label>
+              <label class="field"><span>Agendar para</span><input name="scheduled_for" type="datetime-local" /></label>
               <label class="field"><span>Proxima acao</span><input name="next_action" placeholder="Revisar e aprovar" /></label>
               <button class="primary-btn form-submit" type="submit">
                 <svg><use href="#icon-plus"></use></svg><span>Salvar post</span>
@@ -416,7 +427,7 @@
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
               <label class="field"><span>Conteudo aprovado</span><select name="content_id" data-content-select></select></label>
               <label class="field"><span>Destino</span><input name="target" required placeholder="Instagram, Threads..." /></label>
-              <label class="field"><span>Buffer Channel ID</span><input name="buffer_channel_id" placeholder="copiar da aba Redes" /></label>
+              <label class="field"><span>ID da conta (API oficial)</span><input name="buffer_channel_id" placeholder="copiar da aba Redes" /></label>
               <label class="field">
                 <span>Status</span>
                 <select name="status">
@@ -431,7 +442,7 @@
               <label class="field"><span>URL publicada/base</span><input name="published_url" placeholder="https://..." /></label>
               <label class="field"><span>UTM source</span><input name="utm_source" placeholder="instagram" /></label>
               <label class="field"><span>UTM medium</span><input name="utm_medium" placeholder="social" /></label>
-              <label class="field"><span>UTM campaign</span><input name="utm_campaign" placeholder="koins_maio" /></label>
+              <label class="field"><span>UTM campaign</span><input name="utm_campaign" placeholder="coins_maio" /></label>
               <label class="field"><span>Observacao</span><input name="note" placeholder="Criar rascunho no CMS" /></label>
               <button class="primary-btn form-submit" type="submit">
                 <svg><use href="#icon-plus"></use></svg><span>Adicionar</span>
@@ -441,18 +452,146 @@
           </details>
         </section>
 
+        <section id="videos" class="view" aria-labelledby="videos-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Publicacao social</p>
+              <h3 id="videos-title">Criar, revisar e publicar videos</h3>
+            </div>
+          </div>
+
+          <div class="workflow-strip">
+            <article><strong>1</strong><span>Criar video</span></article>
+            <article><strong>2</strong><span>Revisar video e texto</span></article>
+            <article><strong>3</strong><span>Aprovar</span></article>
+            <article><strong>4</strong><span>API oficial publica</span></article>
+          </div>
+
+          <div class="backend-actionbar panel">
+            <div>
+              <h4>Publicador automatico</h4>
+              <p class="muted">Crie o video, envie para revisao e escolha no card aprovado: postar agora ou agendar.</p>
+            </div>
+            <div class="row-actions">
+              <button class="secondary-btn" id="testBackendVideoBtn" type="button">Testar backend</button>
+              <button class="primary-btn" id="publishVideoNowBtn" type="button">
+                <svg><use href="#icon-play"></use></svg><span>Processar fila pendente</span>
+              </button>
+            </div>
+          </div>
+
+          <form id="videoContentForm" class="content-editor panel" data-content-mode="video" autocomplete="off">
+            <div class="editor-main">
+              <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
+              <label class="field"><span>Titulo interno</span><input name="title" required placeholder="Ex: Reels - chamada Coins" /></label>
+              <label class="field">
+                <span>Publicar em</span>
+                <select name="channel">
+                  <option value="Instagram">Instagram</option>
+                  <option value="Tiktok">TikTok</option>
+                  <option value="Facebook">Facebook</option>
+                  <option value="Threads">Threads</option>
+                  <option value="Todas">Todas as redes ativas</option>
+                </select>
+              </label>
+              <label class="field wide-field"><span>Legenda do video</span><textarea name="body" placeholder="Texto que sera enviado junto com o video"></textarea></label>
+              <label class="field wide-field"><span>Pedido para melhorar</span><textarea name="improvement_prompt" placeholder="Ex: video vertical, dinamico, premium, sem moedas ou icones de moeda, sem Pix, sem recarga, com gift cards e link na bio"></textarea></label>
+              <div class="ai-workbench wide-field">
+                <label class="field"><span>Pedido para a OpenAI</span><textarea name="ai_prompt" placeholder="Ex: criar roteiro curto para Reels/TikTok mostrando como responder pesquisas e trocar Coins por premios"></textarea></label>
+                <div class="ai-controls">
+                  <label class="field"><span>Estilo do video</span><input name="image_style" value="Pesquisa Premios brand palette, dark navy background, yellow highlights, green CTA accents, one Brazilian adult when useful, survey app UI, named gift cards Netflix R$35/R$50, iFood R$35/R$50 and Spotify R$35, no money imagery, no official logos" /></label>
+                  <label class="field"><span>Texto no video</span><input name="image_text" placeholder="Opcional: frase curta na tela" /></label>
+                  <label class="field">
+                    <span>Tamanho</span>
+                    <select name="image_size">
+                      <option value="1024x1536">Vertical 9:16</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Qualidade</span>
+                    <select name="image_quality">
+                      <option value="medium">Media</option>
+                      <option value="high">Alta</option>
+                      <option value="low">Baixa</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Duracao video</span>
+                    <select name="video_duration">
+                      <option value="8">8 segundos</option>
+                      <option value="6">6 segundos</option>
+                      <option value="4">4 segundos</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Resolucao video</span>
+                    <select name="video_resolution">
+                      <option value="720p">720p</option>
+                      <option value="1080p">1080p</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="row-actions">
+                  <button class="secondary-btn" id="videoGenerateTextBtn" data-ai-button type="button">Criar texto</button>
+                  <button class="secondary-btn" id="videoGenerateVideoBtn" data-ai-button type="button">Criar video</button>
+                  <button class="primary-btn" id="videoGenerateCompleteVideoBtn" data-ai-button type="button">
+                    <svg><use href="#icon-play"></use></svg><span>Criar texto + video</span>
+                  </button>
+                </div>
+              </div>
+              <label class="field wide-field"><span>Notas da revisao</span><textarea name="revision_notes" placeholder="Historico curto do que foi pedido, aprovado ou rejeitado"></textarea></label>
+            </div>
+
+            <div class="editor-side">
+              <label class="upload-box" for="videoMediaFileInput">
+                <svg><use href="#icon-upload"></use></svg>
+                <strong>Video MP4</strong>
+                <span>Storage desligado: use URL publica externa para publicar com midia</span>
+                <input id="videoMediaFileInput" name="media_file" type="file" accept="video/mp4" />
+              </label>
+              <div id="videoPreview" class="upload-preview" hidden></div>
+              <label class="field"><span>URL publica do video</span><input name="asset_url" placeholder="https://midia-publica.mp4" /></label>
+              <label class="field">
+                <span>Status</span>
+                <select name="status">
+                  <option value="Rascunho">Rascunho</option>
+                  <option value="Aprovacao">Aprovacao</option>
+                  <option value="Agendado">Agendado</option>
+                  <option value="Publicado">Publicado</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Risco</span>
+                <select name="risk">
+                  <option value="baixo">Baixo</option>
+                  <option value="medio">Medio</option>
+                  <option value="alto">Alto</option>
+                </select>
+              </label>
+              <label class="field"><span>Data alvo</span><input name="due_date" type="date" /></label>
+              <label class="field"><span>Agendar para</span><input name="scheduled_for" type="datetime-local" /></label>
+              <label class="field"><span>Proxima acao</span><input name="next_action" placeholder="Revisar e aprovar" /></label>
+              <button class="primary-btn form-submit" type="submit">
+                <svg><use href="#icon-plus"></use></svg><span>Salvar video</span>
+              </button>
+              <button class="secondary-btn form-submit" id="cancelVideoContentEditBtn" type="button" hidden>Cancelar edicao</button>
+            </div>
+          </form>
+          <div id="videoContentBoard" class="kanban"></div>
+        </section>
+
         <section id="koins" class="view" aria-labelledby="koins-title">
           <div class="section-head">
             <div>
               <p class="eyebrow">Economia interna</p>
-              <h3 id="koins-title">Koins, premios e alertas</h3>
+              <h3 id="koins-title">Coins, premios e alertas</h3>
             </div>
           </div>
           <div class="split-forms">
             <form id="koinMetricForm" class="form-grid panel" autocomplete="off">
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-              <label class="field"><span>Koins emitidos</span><input name="issued" type="number" min="0" value="0" /></label>
-              <label class="field"><span>Koins resgatados</span><input name="redeemed" type="number" min="0" value="0" /></label>
+              <label class="field"><span>Coins emitidos</span><input name="issued" type="number" min="0" value="0" /></label>
+              <label class="field"><span>Coins resgatados</span><input name="redeemed" type="number" min="0" value="0" /></label>
               <label class="field"><span>Resgates pendentes</span><input name="pending_redemptions" type="number" min="0" value="0" /></label>
               <label class="field"><span>Alertas antifraude</span><input name="fraud_alerts" type="number" min="0" value="0" /></label>
               <button class="primary-btn form-submit" type="submit">
@@ -461,8 +600,8 @@
             </form>
             <form id="prizeForm" class="form-grid panel" autocomplete="off">
               <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-              <label class="field"><span>Premio</span><input name="name" required placeholder="Gift card, cupom..." /></label>
-              <label class="field"><span>Custo Koins</span><input name="cost" type="number" min="0" value="0" /></label>
+              <label class="field"><span>Premio</span><input name="name" required placeholder="Netflix R$35, iFood R$50..." /></label>
+              <label class="field"><span>Custo Coins</span><input name="cost" type="number" min="0" value="0" /></label>
               <label class="field"><span>Estoque</span><input name="stock" type="number" min="0" value="0" /></label>
               <label class="field"><span>Resgates</span><input name="redemptions" type="number" min="0" value="0" /></label>
               <label class="field">
@@ -556,7 +695,7 @@
           </div>
           <form id="faqForm" class="form-grid panel" autocomplete="off">
             <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-            <label class="field"><span>Tema</span><input name="topic" placeholder="premios, Koins, cadastro..." /></label>
+            <label class="field"><span>Tema</span><input name="topic" placeholder="premios, Coins, cadastro..." /></label>
             <label class="field wide-field"><span>Pergunta</span><textarea name="question" required placeholder="Pergunta recorrente"></textarea></label>
             <label class="field wide-field"><span>Resposta</span><textarea name="answer" required placeholder="Resposta aprovada"></textarea></label>
             <label class="field">
@@ -581,11 +720,12 @@
               <h3 id="reports-title">Relatorios e crescimento</h3>
             </div>
           </div>
+          <div id="reportKpis" class="kpi-grid"></div>
           <form id="reportForm" class="form-grid panel" autocomplete="off">
             <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
             <label class="field"><span>Data</span><input name="report_date" type="date" required /></label>
             <label class="field"><span>Trafego</span><input name="traffic" type="number" min="0" value="0" /></label>
-            <label class="field"><span>Posts</span><input name="posts" type="number" min="0" value="0" /></label>
+            <label class="field"><span>Posts manuais</span><input name="posts" type="number" min="0" value="0" /></label>
             <label class="field"><span>Cadastros</span><input name="signups" type="number" min="0" value="0" /></label>
             <button class="primary-btn form-submit" type="submit">
               <svg><use href="#icon-plus"></use></svg><span>Registrar</span>
@@ -646,7 +786,6 @@
               </div>
               <form id="backendSettingsForm" class="settings-form" autocomplete="off">
                 <label class="field"><span>URL do backend</span><input name="backend_url" placeholder="https://seu-projeto.vercel.app" /></label>
-                <label class="field"><span>Chave do painel</span><input name="backend_token" type="password" placeholder="KOINOPS_ADMIN_TOKEN" /></label>
                 <div class="row-actions">
                   <button class="secondary-btn" type="submit">Salvar conexao</button>
                   <button class="primary-btn" id="settingsTestBackendBtn" type="button">
@@ -654,7 +793,7 @@
                   </button>
                 </div>
               </form>
-              <p class="muted">A chave do painel fica somente no seu navegador. As API keys reais continuam no backend e no 1Password.</p>
+              <p class="muted">A autenticacao usa o login AWS Cognito. As API keys reais continuam no backend e no 1Password.</p>
             </div>
             <div class="panel">
               <div class="panel-head">

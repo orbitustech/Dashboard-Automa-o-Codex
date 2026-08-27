@@ -1,6 +1,5 @@
 const STORAGE_KEY = "koinops-dashboard-v3";
 const BACKEND_URL_KEY = "koinops-backend-url";
-const BACKEND_TOKEN_KEY = "koinops-backend-token";
 const AUTH_CONFIG_KEY = "koinops-auth-config";
 const AUTH_SESSION_KEY = "koinops-auth-session";
 const AUTH_VERIFIER_KEY = "koinops-auth-verifier";
@@ -8,6 +7,12 @@ const AUTH_STATE_KEY = "koinops-auth-state";
 const supabaseConfig = window.KOINOPS_SUPABASE || {};
 const backendConfig = window.KOINOPS_BACKEND || {};
 const authDefaults = window.KOINOPS_AUTH || {};
+const DEFAULT_AUTOMATION_SLOTS = [
+  { name: "Rascunho de post organico 14h", schedule: "Diario 14:00", output: "Rascunho de post organico" },
+  { name: "Rascunho de post organico 18h", schedule: "Diario 18:00", output: "Rascunho de post organico" },
+  { name: "Rascunho de video organico 14h", schedule: "Diario 14:00", output: "Rascunho de video organico" },
+  { name: "Rascunho de video organico 18h", schedule: "Diario 18:00", output: "Rascunho de video organico" }
+];
 
 const seedData = {
   sites: [],
@@ -50,6 +55,11 @@ let state = loadState();
 let currentView = "overview";
 let syncMode = "local";
 let editingContentId = null;
+let editingSiteId = null;
+let mediaUploadPromise = null;
+let mediaUploadToken = 0;
+let previewObjectUrl = "";
+let mediaStorageUploadEnabled = null;
 let filters = {
   siteId: "all",
   search: ""
@@ -61,7 +71,8 @@ const titles = {
   social: "Redes sociais",
   automations: "Automacoes",
   content: "Conteudo",
-  koins: "Koins e premios",
+  videos: "Videos",
+  koins: "Coins e premios",
   approvals: "Aprovacoes",
   support: "Suporte",
   reports: "Relatorios",
@@ -69,6 +80,65 @@ const titles = {
 };
 
 const columns = ["Rascunho", "Aprovacao", "Agendado", "Publicado"];
+const VIDEO_CONTENT_MARKER = "[koinops:video]";
+const automationPlans = [
+  {
+    id: "pesquisa-premios-vercel-cron",
+    siteLabel: "Pesquisa Premios",
+    contentType: "post",
+    view: "content",
+    sourceLabel: "AWS EventBridge ativo",
+    title: "2 rascunhos organicos por dia",
+    period: "27/05 a 31/05/2026; depois continua diario",
+    start: "2026-05-27T00:00:00-03:00",
+    end: "2026-05-31T23:59:59-03:00",
+    totalDrafts: 10,
+    cadence: "2 rascunhos por dia",
+    status: "ativa",
+    owner: "AWS EventBridge",
+    guardrail: "Cria apenas rascunhos no Supabase. Voce aprova e escolhe Postar agora ou Agendar.",
+    windows: [
+      {
+        label: "Alvo 14:00",
+        time: "13:30",
+        output: "AWS dispara meia hora antes para compensar delay e preparar o rascunho."
+      },
+      {
+        label: "Alvo 18:00",
+        time: "17:30",
+        output: "Cria 1 rascunho com angulo diferente, sem publicar sozinho."
+      }
+    ]
+  },
+  {
+    id: "pesquisa-premios-video-drafts",
+    siteLabel: "Pesquisa Premios",
+    contentType: "video",
+    view: "videos",
+    sourceLabel: "Endpoint pronto para AWS",
+    title: "2 rascunhos de video por dia",
+    period: "Diario, apos configurar o agendador",
+    start: "2026-06-02T00:00:00-03:00",
+    end: "2026-12-31T23:59:59-03:00",
+    totalDrafts: 14,
+    cadence: "2 rascunhos de video por dia",
+    status: "pausada",
+    owner: "AWS EventBridge",
+    guardrail: "Cria legenda e prompt de video na aba Videos. O MP4 precisa ser gerado com Gemini ou anexado antes de aprovar.",
+    windows: [
+      {
+        label: "Video tarde",
+        time: "15:30",
+        output: "Cria 1 rascunho em Videos, sem publicar e sem gastar cota de geracao."
+      },
+      {
+        label: "Video noite",
+        time: "19:30",
+        output: "Cria 1 rascunho com angulo diferente para revisao no dashboard."
+      }
+    ]
+  }
+];
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -124,7 +194,7 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
-function cleanBufferChannelId(value) {
+function cleanAccountRef(value) {
   return String(value || "").trim().split(/\s+/)[0] || "";
 }
 
@@ -167,10 +237,6 @@ function configuredBackendUrl() {
   const isLocalStatic = hostname === "localhost" || hostname === "127.0.0.1";
   const isHostedApp = window.location.protocol.startsWith("http") && !hostname.includes("github.io") && !isLocalStatic;
   return isHostedApp ? window.location.origin : "";
-}
-
-function backendToken() {
-  return localStorage.getItem(BACKEND_TOKEN_KEY) || "";
 }
 
 function normalizeAuthDomain(value) {
@@ -232,8 +298,6 @@ function authSession() {
 }
 
 function backendAuthToken() {
-  const adminToken = backendToken();
-  if (adminToken) return adminToken;
   const session = authSession();
   return session?.access_token || session?.id_token || "";
 }
@@ -412,7 +476,7 @@ async function backendRequest(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (options.auth !== false) {
     const token = backendAuthToken();
-    if (!token) throw new Error("Entre com AWS ou configure a chave do painel em Governanca.");
+    if (!token) throw new Error("Entre com AWS para continuar.");
     headers.Authorization = `Bearer ${token}`;
   }
   const response = await fetch(`${baseUrl}${path}`, {
@@ -429,14 +493,19 @@ async function testBackend(showToast = true) {
     updateBackendStatus("Testando backend...", "info");
     const payload = await backendRequest("/api/health", { method: "GET", auth: false });
     const uploadReady = payload.configured?.upload;
-    const bufferReady = payload.configured?.buffer;
+    const socialPlatforms = payload.configured?.socialPlatforms || {};
+    const socialReady = payload.configured?.socialPlatformsReady || Object.values(socialPlatforms).some(Boolean);
+    const socialCount = Object.values(socialPlatforms).filter(Boolean).length;
     const adminReady = payload.configured?.adminToken;
     const openAiReady = payload.configured?.openai;
+    const geminiReady = payload.configured?.gemini;
     const authReady = payload.configured?.awsLogin || adminReady;
-    const label = uploadReady && bufferReady && openAiReady && authReady ? "Backend pronto" : "Backend incompleto";
-    updateBackendStatus(label, uploadReady && bufferReady && openAiReady && authReady ? "ok" : "warn");
+    const mediaStorage = payload.configured?.mediaStorage || (uploadReady ? "supabase" : "disabled");
+    mediaStorageUploadEnabled = mediaStorage !== "disabled" && Boolean(uploadReady);
+    const label = socialReady && openAiReady && geminiReady && authReady ? "Backend pronto" : "Backend incompleto";
+    updateBackendStatus(label, socialReady && openAiReady && geminiReady && authReady ? "ok" : "warn");
     if (showToast) {
-      toast(`${label}: Buffer ${bufferReady ? "ok" : "pendente"}, upload ${uploadReady ? "ok" : "pendente"}, OpenAI ${openAiReady ? "ok" : "pendente"}.`);
+      toast(`${label}: redes sociais ${socialReady ? `${socialCount} conectada(s)` : "nenhuma conectada"}, midia ${mediaStorage === "disabled" ? "sem storage" : "storage ativo"}, OpenAI ${openAiReady ? "ok" : "pendente"}, Gemini ${geminiReady ? "ok" : "pendente"}.`);
     }
     return payload;
   } catch (error) {
@@ -451,23 +520,235 @@ async function publishQueueNow() {
   const result = await backendRequest("/api/publish", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ limit: 10 })
+    body: JSON.stringify({ limit: 10, publish_mode: "now" })
   });
   await syncAllFromSupabase(false);
   updateBackendStatus("Backend pronto", "ok");
-  toast(result.published ? `${result.published} post(s) enviados ao Buffer.` : "Fila processada. Nenhum post novo publicado.");
+  toast(result.published ? `${result.published} post(s) publicados nas redes.` : "Fila processada. Nenhum post novo publicado.");
 }
 
 async function uploadMediaFile(file) {
+  if (!(await cloudMediaUploadEnabled())) {
+    throw new Error("Upload em nuvem esta desativado. Salve o post sem subir arquivo ou use uma URL publica externa da midia.");
+  }
   const form = new FormData();
   form.append("media_file", file);
-  updateBackendStatus("Enviando imagem...", "info");
+  updateBackendStatus("Enviando midia...", "info");
   const result = await backendRequest("/api/upload-media", {
     method: "POST",
     body: form
   });
   updateBackendStatus("Backend pronto", "ok");
   return result.media.url;
+}
+
+async function cloudMediaUploadEnabled() {
+  if (mediaStorageUploadEnabled !== null) return mediaStorageUploadEnabled;
+  try {
+    const payload = await backendRequest("/api/health", { method: "GET", auth: false });
+    mediaStorageUploadEnabled = payload.configured?.mediaStorage !== "disabled" && Boolean(payload.configured?.upload);
+  } catch (error) {
+    mediaStorageUploadEnabled = false;
+    updateBackendStatus("Midia sem storage", "warn");
+  }
+  return mediaStorageUploadEnabled;
+}
+
+function contentForms() {
+  return qsa("#contentForm, #videoContentForm").filter(Boolean);
+}
+
+function activeContentForm() {
+  return currentView === "videos" ? qs("#videoContentForm") : qs("#contentForm");
+}
+
+function contentFormMode(form = activeContentForm()) {
+  return form?.dataset?.contentMode === "video" ? "video" : "post";
+}
+
+function previewForForm(form = activeContentForm()) {
+  return contentFormMode(form) === "video" ? qs("#videoPreview") : qs("#imagePreview");
+}
+
+function aiButtonId(form, action) {
+  const isVideoForm = contentFormMode(form) === "video";
+  const map = isVideoForm
+    ? {
+        text: "videoGenerateTextBtn",
+        video: "videoGenerateVideoBtn",
+        completeVideo: "videoGenerateCompleteVideoBtn"
+      }
+    : {
+        text: "generateTextBtn",
+        image: "generateImageBtn",
+        completeImage: "generateCompleteBtn"
+      };
+  return map[action] || "";
+}
+
+async function replaceContentMediaFromFile(file, form = activeContentForm()) {
+  const previousUrl = form.elements.asset_url.value;
+  const token = ++mediaUploadToken;
+  const localPreviewUrl = URL.createObjectURL(file);
+  form.elements.asset_url.value = "";
+  setImagePreview(localPreviewUrl, file.name, file.type, form);
+
+  if (!(await cloudMediaUploadEnabled())) {
+    form.elements.asset_url.value = previousUrl;
+    form.elements.media_file.value = "";
+    updateBackendStatus("Midia sem storage", "warn");
+    toast("Preview local carregado. Como o storage esta desligado, use uma URL publica externa para publicar com midia.");
+    return "";
+  }
+
+  const currentUpload = (async () => {
+    try {
+      const uploadedUrl = await uploadMediaFile(file);
+      if (token !== mediaUploadToken) return uploadedUrl;
+
+      form.elements.asset_url.value = uploadedUrl;
+      form.elements.media_file.value = "";
+      setImagePreview(uploadedUrl, file.name, file.type, form);
+
+      if (editingContentId) {
+        await updateRecord("content", editingContentId, { asset_url: uploadedUrl });
+        saveState();
+        renderContent();
+        renderContentSelects();
+        toast("Midia substituida no post atual.");
+      } else {
+        toast("Midia enviada e pronta para salvar no post.");
+      }
+      return uploadedUrl;
+    } catch (error) {
+      if (token === mediaUploadToken) {
+        form.elements.asset_url.value = previousUrl;
+        setImagePreview(previousUrl, form.elements.title.value || "Midia atual", "", form);
+      }
+      throw error;
+    } finally {
+      if (mediaUploadPromise === currentUpload) mediaUploadPromise = null;
+    }
+  })();
+
+  mediaUploadPromise = currentUpload;
+  return currentUpload;
+}
+
+function isContentDraftAutomation(automation) {
+  const text = plainText(`${automation?.name || ""} ${automation?.output || ""}`);
+  if (isVideoDraftAutomation(automation)) return false;
+  return text.includes("post organico") || (text.includes("rascunho") && text.includes("conteudo"));
+}
+
+function isVideoDraftAutomation(automation) {
+  const text = plainText(`${automation?.name || ""} ${automation?.output || ""}`);
+  return text.includes("video") && (text.includes("rascunho") || text.includes("conteudo") || text.includes("post"));
+}
+
+function automationTargetChannel(automation) {
+  const text = plainText(`${automation?.name || ""} ${automation?.output || ""}`);
+  const social = state.socials.find((item) =>
+    item.site_id === automation.site_id &&
+    item.status === "ativo" &&
+    item.buffer_channel_id &&
+    text.includes(plainText(item.channel))
+  ) || state.socials.find((item) =>
+    item.site_id === automation.site_id &&
+    item.status === "ativo" &&
+    item.buffer_channel_id
+  );
+  return social?.channel || "Threads";
+}
+
+function contentSortTime(item) {
+  const value = item.updated_at || item.created_at || item.scheduled_for || item.due_date || "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function recentContentForGeneration(siteId, limit = 8) {
+  return state.content
+    .filter((item) => item.site_id === siteId && item.id !== editingContentId)
+    .sort((a, b) => contentSortTime(b) - contentSortTime(a))
+    .slice(0, limit)
+    .map((item) => ({
+      title: item.title,
+      body: String(item.body || "").slice(0, 260),
+      image_prompt: String(item.improvement_prompt || "").slice(0, 220),
+      channel: item.channel,
+      status: item.status
+    }));
+}
+
+function recentContentBrief(items) {
+  return items
+    .map((item, index) => `${index + 1}. ${item.title || "sem titulo"} - ${String(item.body || item.image_prompt || "").slice(0, 180)}`)
+    .join("; ");
+}
+
+function automationGenerationInput(automation, site) {
+  const recentContent = recentContentForGeneration(site.id, 8);
+  const recent = recentContentBrief(recentContent);
+  const period = plainText(automation.name).includes("tarde") ? "tarde" : "manha";
+  return {
+    siteId: site.id,
+    siteName: site.name || "",
+    siteUrl: site.url || "",
+    objective: site.objective || "",
+    contentPrompt: site.content_prompt || "",
+    channel: automationTargetChannel(automation),
+    title: `${automation.name} - ${new Date().toLocaleDateString("pt-BR")}`,
+    body: "",
+    prompt: [
+      `Execucao manual do botao Rodar para a rotina ${automation.name}.`,
+      `Criar 1 rascunho organico para o periodo da ${period}.`,
+      "A legenda deve instigar sem explicar demais: hook curto, clareza sobre o que o site oferece, CTA coerente com o site.",
+      "Variar abertura e ritmo em relacao aos posts recentes.",
+      recent ? `Posts recentes para nao repetir: ${recent}` : ""
+    ].filter(Boolean).join(" "),
+    improvementPrompt: "",
+    image_prompt: "Criar imagem 9:16 premium para social, coerente com o tema do site.",
+    imageText: "",
+    style: "",
+    size: "1024x1536",
+    quality: "medium",
+    recentContent,
+    variationSeed: `${automation.id || automation.name}-${Date.now()}`
+  };
+}
+
+async function runContentDraftAutomation(automation) {
+  const slot = plainText(`${automation.name} ${automation.schedule}`).includes("18") ? "18h" : "14h";
+  updateBackendStatus("Criando rascunho...", "info");
+  const result = await backendRequest("/api/create-draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slot, site_id: automation.site_id, automation_id: automation.id })
+  });
+  await syncAllFromSupabase(false);
+  saveState();
+  render();
+  switchView("content");
+  updateBackendStatus("Backend pronto", "ok");
+  toast(result.skipped ? "O rascunho desse horario ja existia." : "Rascunho criado em Conteudo. Revise antes de aprovar.");
+}
+
+async function runVideoDraftAutomation(automation) {
+  const text = plainText(`${automation.name} ${automation.schedule}`);
+  const slot = text.includes("18") || text.includes("19") ? "18h" : "14h";
+  updateBackendStatus("Criando rascunho de video...", "info");
+  const result = await backendRequest("/api/create-video-draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slot, site_id: automation.site_id, automation_id: automation.id })
+  });
+  await syncAllFromSupabase(false);
+  saveState();
+  render();
+  switchView("videos");
+  updateBackendStatus("Backend pronto", "ok");
+  toast(result.skipped ? "O rascunho de video desse horario ja existia." : "Rascunho criado em Videos. Gere/anexe o MP4 antes de aprovar.");
 }
 
 function selectedSiteFromForm(form) {
@@ -477,20 +758,28 @@ function selectedSiteFromForm(form) {
 
 function generationInput(form) {
   const site = selectedSiteFromForm(form);
+  const recentContent = recentContentForGeneration(site.id || "", 8);
   return {
     siteId: site.id || "",
-    siteName: site.name || "Pesquisa Premios",
+    siteName: site.name || "",
     siteUrl: site.url || "",
-    objective: site.objective || "Gerar confianca e cadastros para pesquisas com Koins",
+    objective: site.objective || "",
+    contentPrompt: site.content_prompt || "",
     channel: form.elements.channel?.value || "Threads",
     title: form.elements.title?.value || "",
     body: form.elements.body?.value || "",
     prompt: form.elements.ai_prompt?.value || form.elements.improvement_prompt?.value || "",
     improvementPrompt: form.elements.improvement_prompt?.value || "",
     image_prompt: form.elements.improvement_prompt?.value || form.elements.body?.value || "",
+    imageText: form.elements.image_text?.value || "",
     style: form.elements.image_style?.value || "",
     size: form.elements.image_size?.value || "1024x1536",
-    quality: form.elements.image_quality?.value || "medium"
+    quality: form.elements.image_quality?.value || "medium",
+    durationSeconds: Number(form.elements.video_duration?.value || 8),
+    resolution: form.elements.video_resolution?.value || "720p",
+    aspectRatio: "9:16",
+    recentContent,
+    variationSeed: `${site.id || "site"}-${Date.now()}-${Math.random().toString(16).slice(2)}`
   };
 }
 
@@ -505,9 +794,8 @@ function applyGeneratedContent(form, content) {
 }
 
 async function generatePostText(options = {}) {
-  const { manageUi = true } = options;
-  const form = qs("#contentForm");
-  if (manageUi) setAiGenerationBusy(true, "generateTextBtn", "Criando texto...");
+  const { manageUi = true, form = activeContentForm() } = options;
+  if (manageUi) setAiGenerationBusy(true, aiButtonId(form, "text"), "Criando texto...");
   try {
     updateBackendStatus("Gerando texto OpenAI...", "info");
     const result = await backendRequest("/api/generate-post", {
@@ -525,11 +813,10 @@ async function generatePostText(options = {}) {
 }
 
 async function generatePostImage(options = {}) {
-  const { manageUi = true } = options;
-  const form = qs("#contentForm");
+  const { manageUi = true, form = activeContentForm() } = options;
   if (manageUi) {
-    setAiGenerationBusy(true, "generateImageBtn", "Criando imagem...");
-    setImageLoading("Criando imagem com OpenAI...");
+    setAiGenerationBusy(true, aiButtonId(form, "image"), "Criando imagem...");
+    setImageLoading("Criando imagem com OpenAI...", form);
   }
   try {
     updateBackendStatus("Gerando imagem OpenAI...", "info");
@@ -540,22 +827,86 @@ async function generatePostImage(options = {}) {
       body: JSON.stringify({
         ...input,
         prompt: input.improvementPrompt || input.body || input.prompt,
-        filename: form.elements.title?.value || "post-koins"
+        filename: form.elements.title?.value || "post-coins"
       })
     });
-    form.elements.asset_url.value = result.media.url;
+    if (result.media.url) {
+      form.elements.asset_url.value = result.media.url;
+      setImagePreview(result.media.url, form.elements.title.value || "Imagem OpenAI", result.media.contentType || "", form);
+    } else if (result.media.dataUrl) {
+      form.elements.asset_url.value = "";
+      setImagePreview(result.media.dataUrl, form.elements.title.value || "Imagem OpenAI temporaria", result.media.contentType || "image/png", form);
+      form.elements.revision_notes.value = [
+        form.elements.revision_notes.value,
+        "Imagem gerada apenas como previa temporaria; nao foi salva em storage. Para publicar com midia, informe uma URL publica externa."
+      ].filter(Boolean).join("\n");
+    } else {
+      throw new Error("A OpenAI retornou imagem, mas nenhum preview utilizavel.");
+    }
     if (result.media.revisedPrompt) {
       form.elements.revision_notes.value = [
         form.elements.revision_notes.value,
         `Prompt revisado pela OpenAI: ${result.media.revisedPrompt}`
       ].filter(Boolean).join("\n");
     }
-    setImagePreview(result.media.url, form.elements.title.value || "Imagem OpenAI");
     updateBackendStatus("Backend pronto", "ok");
-    toast("Imagem criada e anexada ao post.");
+    toast(result.media.ephemeral ? "Imagem criada como previa temporaria, sem salvar no backend." : "Imagem criada e anexada ao post.");
     return result.media;
   } catch (error) {
-    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Imagem atual");
+    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Imagem atual", "", form);
+    throw error;
+  } finally {
+    if (manageUi) setAiGenerationBusy(false);
+  }
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function generatePostVideo(options = {}) {
+  const { manageUi = true, form = activeContentForm() } = options;
+  if (manageUi) {
+    setAiGenerationBusy(true, aiButtonId(form, "video"), "Criando video...");
+    setImageLoading("Iniciando video no Gemini Veo...", form);
+  }
+  try {
+    updateBackendStatus("Gerando video Gemini...", "info");
+    const input = generationInput(form);
+    const start = await backendRequest("/api/generate-video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...input,
+        prompt: input.improvementPrompt || input.body || input.prompt,
+        filename: form.elements.title?.value || "video-coins"
+      })
+    });
+    const operationName = start.operation?.operationName;
+    if (!operationName) throw new Error("Gemini nao retornou operacao de video.");
+
+    for (let attempt = 1; attempt <= 72; attempt += 1) {
+      setImageLoading(`Criando video com Gemini Veo... tentativa ${attempt}`, form);
+      await wait(attempt === 1 ? 8000 : 5000);
+      const status = await backendRequest("/api/video-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operationName,
+          filename: form.elements.title?.value || "video-coins"
+        })
+      });
+      if (status.done && status.media?.url) {
+        form.elements.asset_url.value = status.media.url;
+        setImagePreview(status.media.url, form.elements.title.value || "Video Gemini", status.media.contentType, form);
+        updateBackendStatus("Backend pronto", "ok");
+        toast("Video criado e anexado ao post.");
+        return status.media;
+      }
+    }
+    throw new Error("O video ainda esta em processamento. Tente Criar video novamente em alguns minutos.");
+  } catch (error) {
+    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Midia atual", "", form);
     throw error;
   } finally {
     if (manageUi) setAiGenerationBusy(false);
@@ -563,15 +914,31 @@ async function generatePostImage(options = {}) {
 }
 
 async function generateCompletePost() {
-  setAiGenerationBusy(true, "generateCompleteBtn", "Criando post...");
-  setImageLoading("Preparando texto e imagem...");
+  const form = activeContentForm();
+  setAiGenerationBusy(true, aiButtonId(form, "completeImage"), "Criando post...");
+  setImageLoading("Preparando texto e imagem...", form);
   try {
-    await generatePostText({ manageUi: false });
-    setImageLoading("Criando imagem com OpenAI...");
-    await generatePostImage({ manageUi: false });
+    await generatePostText({ manageUi: false, form });
+    setImageLoading("Criando imagem com OpenAI...", form);
+    await generatePostImage({ manageUi: false, form });
   } catch (error) {
-    const form = qs("#contentForm");
-    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Imagem atual");
+    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Imagem atual", "", form);
+    throw error;
+  } finally {
+    setAiGenerationBusy(false);
+  }
+}
+
+async function generateCompleteVideoPost() {
+  const form = activeContentForm();
+  setAiGenerationBusy(true, aiButtonId(form, "completeVideo"), "Criando post...");
+  setImageLoading("Preparando texto e video...", form);
+  try {
+    await generatePostText({ manageUi: false, form });
+    setImageLoading("Criando video com Gemini Veo...", form);
+    await generatePostVideo({ manageUi: false, form });
+  } catch (error) {
+    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Midia atual", "", form);
     throw error;
   } finally {
     setAiGenerationBusy(false);
@@ -579,7 +946,7 @@ async function generateCompletePost() {
 }
 
 function setAiGenerationBusy(isBusy, activeId = "", label = "Gerando...") {
-  qsa("#generateTextBtn, #generateImageBtn, #generateCompleteBtn").forEach((button) => {
+  qsa("[data-ai-button]").forEach((button) => {
     if (!button.dataset.defaultHtml) button.dataset.defaultHtml = button.innerHTML;
     const active = button.id === activeId;
     button.disabled = isBusy;
@@ -591,9 +958,12 @@ function setAiGenerationBusy(isBusy, activeId = "", label = "Gerando...") {
   });
 }
 
-function setImageLoading(message = "Criando imagem com OpenAI...") {
-  const preview = qs("#imagePreview");
+function setImageLoading(message = "Criando imagem com OpenAI...", form = activeContentForm()) {
+  const preview = previewForForm(form);
   if (!preview) return;
+  const hint = contentFormMode(form) === "video"
+    ? "Videos podem levar alguns minutos."
+    : "Imagens levam segundos; videos podem levar alguns minutos.";
   preview.hidden = false;
   preview.classList.add("is-loading");
   preview.setAttribute("aria-busy", "true");
@@ -602,7 +972,7 @@ function setImageLoading(message = "Criando imagem com OpenAI...") {
     <div class="image-loading">
       <span class="image-spinner" aria-hidden="true"></span>
       <strong>${esc(message)}</strong>
-      <span>Isso pode levar alguns segundos.</span>
+      <span>${esc(hint)}</span>
     </div>
   `;
 }
@@ -613,6 +983,7 @@ function normalizeSites(sites) {
     name: site.name || "",
     url: site.url || "",
     objective: site.objective || "",
+    content_prompt: site.content_prompt || "",
     status: site.status || "ativo",
     vault_reference: site.vault_reference || site.vault || "",
     api_type: site.api_type || site.api || site.platform || "",
@@ -630,7 +1001,7 @@ function normalizeSocials(items) {
     channel: item.channel || "",
     handle: item.handle || "",
     profile_url: item.profile_url || item.url || "",
-    buffer_channel_id: cleanBufferChannelId(item.buffer_channel_id || item.bufferChannelId),
+    buffer_channel_id: cleanAccountRef(item.buffer_channel_id || item.bufferChannelId),
     cadence: item.cadence || "",
     posts_per_month: Number(item.posts_per_month ?? item.posts ?? 0),
     clicks: Number(item.clicks ?? 0),
@@ -648,7 +1019,7 @@ function normalizeAutomations(items) {
     site_id: item.site_id || item.siteId || "",
     name: item.name || "",
     schedule: item.schedule || "",
-    owner: item.owner || "Codex",
+    owner: item.owner || "Automacao",
     output: item.output || "",
     risk: item.risk || "baixo",
     status: item.status || "ativa",
@@ -689,7 +1060,7 @@ function normalizeDistribution(items) {
     site_id: item.site_id || item.siteId || "",
     content_id: item.content_id || item.contentId || "",
     target: item.target || "",
-    buffer_channel_id: cleanBufferChannelId(item.buffer_channel_id || item.bufferChannelId),
+    buffer_channel_id: cleanAccountRef(item.buffer_channel_id || item.bufferChannelId),
     buffer_post_id: item.buffer_post_id || item.bufferPostId || "",
     status: item.status || "fila",
     scheduled_for: item.scheduled_for || null,
@@ -931,6 +1302,79 @@ function formatDate(value) {
   return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
+function isVideoMedia(url, contentType = "") {
+  const cleanType = String(contentType || "").toLowerCase();
+  const cleanUrl = String(url || "").split("?")[0].toLowerCase();
+  return cleanType.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/.test(cleanUrl);
+}
+
+function hasVideoMarker(value = "") {
+  return String(value || "").includes(VIDEO_CONTENT_MARKER);
+}
+
+function stripVideoMarker(value = "") {
+  return String(value || "")
+    .replaceAll(VIDEO_CONTENT_MARKER, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function withVideoMarker(value = "") {
+  const clean = stripVideoMarker(value);
+  return [clean, VIDEO_CONTENT_MARKER].filter(Boolean).join("\n");
+}
+
+function isVideoContent(item = {}) {
+  return hasVideoMarker(item.revision_notes) || isVideoMedia(item.asset_url);
+}
+
+function mediaMarkup(url, label = "Midia", contentType = "") {
+  if (!url) return "";
+  if (isVideoMedia(url, contentType)) {
+    return `<video src="${esc(url)}" controls playsinline preload="metadata" aria-label="${esc(label)}"></video>`;
+  }
+  return `<img src="${esc(url)}" alt="${esc(label)}" loading="lazy">`;
+}
+
+function contentMediaCard(url, label = "Midia") {
+  if (!url) return "";
+  if (isVideoMedia(url)) {
+    return `<div class="content-media">${mediaMarkup(url, label)}</div><p><a href="${esc(url)}" target="_blank" rel="noreferrer">Abrir video</a></p>`;
+  }
+  return `<a class="content-media" href="${esc(url)}" target="_blank" rel="noreferrer">${mediaMarkup(url, label)}</a>`;
+}
+
+function plainText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function siteForPlan(plan) {
+  const target = plainText(plan.siteLabel);
+  return state.sites.find((site) => plainText(site.name).includes(target) || target.includes(plainText(site.name)));
+}
+
+function contentDateForPlan(item) {
+  return item.created_at || item.scheduled_for || item.due_date || "";
+}
+
+function contentItemsForPlan(plan) {
+  const site = siteForPlan(plan);
+  const start = new Date(plan.start);
+  const end = new Date(plan.end);
+  return state.content.filter((item) => {
+    if (site && item.site_id !== site.id) return false;
+    if (plan.contentType === "video" && !isVideoContent(item)) return false;
+    if (plan.contentType === "post" && isVideoContent(item)) return false;
+    const rawDate = contentDateForPlan(item);
+    if (!rawDate) return false;
+    const date = new Date(rawDate.length === 10 ? `${rawDate}T12:00:00-03:00` : rawDate);
+    return !Number.isNaN(date.getTime()) && date >= start && date <= end;
+  });
+}
+
 function formatShortDate(value) {
   if (!value) return "Sem data";
   const date = new Date(`${value}T00:00:00`);
@@ -938,8 +1382,31 @@ function formatShortDate(value) {
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
+function dateKeyFromDate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function dateKey(value) {
+  if (!value) return "";
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return "";
+  return dateKeyFromDate(date);
+}
+
+function shiftedDateKey(baseKey, days) {
+  const date = new Date(`${baseKey || todayValue()}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return dateKeyFromDate(date);
+}
+
 function todayValue() {
-  return new Date().toISOString().slice(0, 10);
+  return dateKeyFromDate(new Date());
 }
 
 function statusChip(status) {
@@ -981,10 +1448,12 @@ function render() {
   renderFunnel();
   renderSites();
   renderSocial();
+  renderAutomationPlan();
   renderAutomations();
   renderContent();
+  renderVideos();
   renderDistribution();
-  renderKoins();
+  renderCoins();
   renderApprovals();
   renderSupport();
   renderFaq();
@@ -1129,11 +1598,40 @@ function currentKoinTotals() {
 }
 
 function currentReportTotals() {
-  return filtered(state.reports).reduce((total, item) => ({
+  const manual = filtered(state.reports).reduce((total, item) => ({
     traffic: total.traffic + item.traffic,
     posts: total.posts + item.posts,
     signups: total.signups + item.signups
   }), { traffic: 0, posts: 0, signups: 0 });
+  const operation = currentReportStats();
+  return {
+    ...manual,
+    posts: manual.posts + operation.contentTotal
+  };
+}
+
+function currentReportStats() {
+  const content = filtered(state.content);
+  const distribution = filtered(state.distribution);
+  const approvals = filtered(state.approvals);
+  const support = filtered(state.supportMessages);
+  const reports = filtered(state.reports);
+  const isStatus = (item, status) => String(item.status || "").toLowerCase() === status;
+  return {
+    contentTotal: content.length,
+    drafts: content.filter((item) => item.status === "Rascunho").length,
+    review: content.filter((item) => item.status === "Aprovacao").length,
+    scheduled: content.filter((item) => item.status === "Agendado").length,
+    published: content.filter((item) => item.status === "Publicado").length,
+    queuedTasks: distribution.filter((item) => ["fila", "agendado"].includes(String(item.status || "").toLowerCase())).length,
+    bufferAccepted: distribution.filter((item) => item.buffer_post_id).length,
+    publishedTasks: distribution.filter((item) => isStatus(item, "publicado") || item.published_at || item.published_url).length,
+    errors: distribution.filter((item) => isStatus(item, "erro") || item.error_message).length,
+    pendingApprovals: approvals.filter((item) => isStatus(item, "pendente")).length,
+    openSupport: support.filter((item) => !["respondido", "fechado"].includes(String(item.status || "").toLowerCase())).length,
+    manualTraffic: reports.reduce((total, item) => total + item.traffic, 0),
+    manualSignups: reports.reduce((total, item) => total + item.signups, 0)
+  };
 }
 
 function renderFunnel() {
@@ -1142,7 +1640,7 @@ function renderFunnel() {
   const values = [
     { label: "Cadastros", value: reportTotals.signups, max: Math.max(10, reportTotals.signups), color: "green" },
     { label: "Trafego", value: reportTotals.traffic, max: Math.max(100, reportTotals.traffic), color: "" },
-    { label: "Koins", value: koins.issued, max: Math.max(100, koins.issued), color: "amber" },
+    { label: "Coins", value: koins.issued, max: Math.max(100, koins.issued), color: "amber" },
     { label: "Resgates", value: koins.pendingRedemptions, max: Math.max(20, koins.pendingRedemptions), color: "" }
   ];
   qs("#funnelChart").innerHTML = values.map((item) => `
@@ -1157,17 +1655,21 @@ function renderFunnel() {
 function renderSites() {
   const sites = filtered(state.sites);
   qs("#sitesTable").innerHTML = tableMarkup(
-    ["Nome do site", "URL", "Objetivo", "Status", "Referencia do cofre", "Tipo de API", "Ultima auditoria", "Proxima acao", "Acoes"],
+    ["Nome do site", "URL", "Objetivo", "Prompt de temas", "Status", "Referencia do cofre", "Tipo de API", "Ultima auditoria", "Proxima acao", "Acoes"],
     sites.map((site) => [
       esc(site.name),
       `<a href="${esc(site.url)}" target="_blank" rel="noreferrer">${esc(site.url)}</a>`,
       esc(site.objective),
+      site.content_prompt
+        ? esc(site.content_prompt.length > 60 ? `${site.content_prompt.slice(0, 60)}...` : site.content_prompt)
+        : `<span class="muted">Nao definido</span>`,
       statusChip(site.status),
       esc(site.vault_reference),
       esc(site.api_type),
       esc(formatDate(site.last_audit)),
       esc(site.next_action),
       rowActions([
+        miniButton("editSite", site.id, "Editar"),
         miniButton("auditSite", site.id, "Auditar"),
         miniButton("deleteSite", site.id, "Excluir", "reject")
       ])
@@ -1189,7 +1691,7 @@ function renderSocial() {
         <div><strong>${esc(item.clicks)}</strong><span>cliques</span></div>
       </div>
       <p class="muted">${esc(item.cadence || "Sem cadencia")} - crescimento ${esc(item.growth)}%</p>
-      <p class="muted">Buffer: ${esc(item.buffer_channel_id || "nao mapeado")}</p>
+      <p class="muted">Conta API: ${esc(item.buffer_channel_id || "nao mapeado")}</p>
       <p class="muted">${esc(item.next_action || "Sem proxima acao")}</p>
       <div class="row-actions">
         ${item.profile_url ? `<a class="mini-btn" href="${esc(item.profile_url)}" target="_blank" rel="noreferrer">Abrir</a>` : ""}
@@ -1197,6 +1699,57 @@ function renderSocial() {
       </div>
     </article>
   `).join("") : emptyState("Nenhuma rede encontrada para o filtro atual.");
+}
+
+function renderAutomationPlan() {
+  const root = qs("#automationPlan");
+  if (!root) return;
+
+  root.innerHTML = automationPlans.map((plan) => {
+    const site = siteForPlan(plan);
+    const items = contentItemsForPlan(plan);
+    const waitingReview = items.filter((item) => ["Rascunho", "Aprovacao"].includes(item.status)).length;
+    const scheduledOrPublished = items.filter((item) => ["Agendado", "Publicado"].includes(item.status)).length;
+    const remaining = Math.max(0, plan.totalDrafts - items.length);
+    const isVideoPlan = plan.contentType === "video";
+    return `
+      <section class="automation-plan-panel">
+        <div class="automation-plan-head">
+          <div>
+            <p class="eyebrow">${esc(plan.sourceLabel || "Automacao ativa")}</p>
+            <h4>${esc(plan.title)}</h4>
+            <p class="muted">${esc(site?.name || plan.siteLabel)} - ${esc(plan.period)} - ${esc(plan.cadence)}</p>
+          </div>
+          <div class="automation-plan-actions">
+            ${statusChip(plan.status)}
+            <button class="secondary-btn compact-btn" type="button" data-action="${isVideoPlan ? "openVideos" : "openContent"}">${isVideoPlan ? "Ver Videos" : "Ver Conteudo"}</button>
+          </div>
+        </div>
+        <div class="automation-plan-metrics">
+          <article><span>Meta da semana</span><strong>${esc(plan.totalDrafts)}</strong><small>rascunhos</small></article>
+          <article><span>Visiveis no painel</span><strong>${esc(items.length)}</strong><small>${isVideoPlan ? "videos" : "posts"} desta semana</small></article>
+          <article><span>Para revisar</span><strong>${esc(waitingReview)}</strong><small>rascunho/aprovacao</small></article>
+          <article><span>Restantes</span><strong>${esc(remaining)}</strong><small>ate domingo</small></article>
+        </div>
+        <div class="automation-schedule-list">
+          ${plan.windows.map((windowItem) => `
+            <article>
+              <strong>${esc(windowItem.time)}</strong>
+              <div>
+                <h5>${esc(windowItem.label)}</h5>
+                <p>${esc(windowItem.output)}</p>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+        <div class="automation-guardrail">
+          <strong>Trava de seguranca:</strong>
+          <span>${esc(plan.guardrail)}</span>
+          <span>Agendados/publicados: ${esc(scheduledOrPublished)}</span>
+        </div>
+      </section>
+    `;
+  }).join("");
 }
 
 function renderAutomations() {
@@ -1221,8 +1774,21 @@ function renderAutomations() {
 }
 
 function renderContent() {
-  const items = filtered(state.content);
-  qs("#contentBoard").innerHTML = columns.map((column) => {
+  const items = filtered(state.content).filter((item) => !isVideoContent(item));
+  renderContentBoard("#contentBoard", items);
+}
+
+function renderVideos() {
+  const board = qs("#videoContentBoard");
+  if (!board) return;
+  const items = filtered(state.content).filter((item) => isVideoContent(item));
+  renderContentBoard("#videoContentBoard", items);
+}
+
+function renderContentBoard(selector, items) {
+  const board = qs(selector);
+  if (!board) return;
+  board.innerHTML = columns.map((column) => {
     const columnItems = items.filter((item) => item.status === column);
     return `
       <section class="kanban-column">
@@ -1231,10 +1797,11 @@ function renderContent() {
           <article class="content-item" data-risk="${esc(item.risk)}">
             <h5>${esc(item.title)}</h5>
             <p>${esc(siteName(item.site_id))} - ${esc(item.channel || "sem canal")} - vence ${esc(formatShortDate(item.due_date))}</p>
-            ${item.asset_url ? `<a class="content-media" href="${esc(item.asset_url)}" target="_blank" rel="noreferrer"><img src="${esc(item.asset_url)}" alt="Midia de ${esc(item.title)}" loading="lazy"></a>` : ""}
+            ${contentMediaCard(item.asset_url, `Midia de ${item.title}`)}
             ${item.body ? `<p>${esc(item.body.slice(0, 180))}${item.body.length > 180 ? "..." : ""}</p>` : ""}
             ${item.improvement_prompt ? `<p class="improvement-note"><strong>Melhorar:</strong> ${esc(item.improvement_prompt.slice(0, 220))}${item.improvement_prompt.length > 220 ? "..." : ""}</p>` : ""}
-            ${item.revision_notes ? `<p class="revision-note"><strong>Revisao:</strong> ${esc(item.revision_notes.slice(0, 180))}${item.revision_notes.length > 180 ? "..." : ""}</p>` : ""}
+            ${stripVideoMarker(item.revision_notes) ? `<p class="revision-note"><strong>Revisao:</strong> ${esc(stripVideoMarker(item.revision_notes).slice(0, 180))}${stripVideoMarker(item.revision_notes).length > 180 ? "..." : ""}</p>` : ""}
+            ${item.scheduled_for ? `<p><strong>Agendado para:</strong> ${esc(formatDate(item.scheduled_for))}</p>` : ""}
             <p>${esc(item.next_action || "Sem proxima acao")}</p>
             ${item.published_url ? `<p><a href="${esc(item.published_url)}" target="_blank" rel="noreferrer">Publicado</a></p>` : ""}
             <div class="row-actions">
@@ -1251,16 +1818,64 @@ function renderContent() {
   }).join("");
 }
 
+function pendingDistributionTasksForContent(contentId) {
+  return state.distribution.filter((task) =>
+    task.content_id === contentId &&
+    ["fila", "agendado"].includes(task.status) &&
+    !task.buffer_post_id
+  );
+}
+
+function socialTargetsForContent(content) {
+  return state.socials.filter((social) =>
+    social.site_id === content.site_id &&
+    social.status === "ativo" &&
+    cleanAccountRef(social.buffer_channel_id) &&
+    contentMatchesSocial(content, social)
+  );
+}
+
+function missingDistributionTargetsForContent(content) {
+  const tasks = state.distribution.filter((task) => task.content_id === content.id);
+  return socialTargetsForContent(content).filter((social) => {
+    const channelId = cleanAccountRef(social.buffer_channel_id);
+    return !tasks.some((task) =>
+      cleanAccountRef(task.buffer_channel_id) === channelId &&
+      task.status !== "erro"
+    );
+  });
+}
+
 function nextContentButton(item) {
   if (item.status === "Rascunho") return miniButton("advanceContent", item.id, "Enviar para revisao");
-  if (item.status === "Aprovacao") return miniButton("advanceContent", item.id, "Aprovar para Buffer", "approve");
+  if (item.status === "Aprovacao") {
+    return [
+      miniButton("publishContentNow", item.id, "Postar agora", "approve"),
+      miniButton("scheduleContent", item.id, "Agendar")
+    ].join("");
+  }
+  if (item.status === "Agendado" && pendingDistributionTasksForContent(item.id).length) {
+    return [
+      miniButton("publishContentNow", item.id, "Postar agora", "approve"),
+      miniButton("markContentPublished", item.id, "Marcar publicado", "approve")
+    ].join("");
+  }
+  if (item.status === "Agendado") {
+    return [
+      missingDistributionTargetsForContent(item).length ? miniButton("publishMissingNetworks", item.id, "Postar redes faltantes", "approve") : "",
+      miniButton("markContentPublished", item.id, "Marcar publicado", "approve")
+    ].join("");
+  }
+  if (item.status === "Publicado" && missingDistributionTargetsForContent(item).length) {
+    return miniButton("publishMissingNetworks", item.id, "Postar redes faltantes", "approve");
+  }
   return "";
 }
 
 function renderDistribution() {
   const tasks = filtered(state.distribution);
   qs("#distributionTable").innerHTML = tableMarkup(
-    ["Conteudo", "Site", "Destino", "Status", "Buffer", "Agendamento", "UTM", "Publicado", "Observacao", "Acoes"],
+    ["Conteudo", "Site", "Destino", "Status", "Conta API", "Agendamento", "UTM", "Publicado", "Observacao", "Acoes"],
     tasks.map((item) => [
       esc(contentTitle(item.content_id)),
       esc(siteName(item.site_id)),
@@ -1279,12 +1894,12 @@ function renderDistribution() {
   );
 }
 
-function renderKoins() {
+function renderCoins() {
   const prizes = filtered(state.prizes);
   const koins = currentKoinTotals();
   const coinKpis = [
-    { label: "Koins emitidos", value: koins.issued.toLocaleString("pt-BR"), hint: "ultima metrica por site" },
-    { label: "Koins resgatados", value: koins.redeemed.toLocaleString("pt-BR"), hint: "premios pagos" },
+    { label: "Coins emitidos", value: koins.issued.toLocaleString("pt-BR"), hint: "ultima metrica por site" },
+    { label: "Coins resgatados", value: koins.redeemed.toLocaleString("pt-BR"), hint: "premios pagos" },
     { label: "Resgates pendentes", value: koins.pendingRedemptions, hint: "requerem acompanhamento" },
     { label: "Alertas antifraude", value: koins.fraudAlerts, hint: "fila de revisao" },
     { label: "Premios criticos", value: prizes.filter((item) => item.status === "critico").length, hint: "estoque muito baixo" }
@@ -1301,7 +1916,7 @@ function renderKoins() {
     prizes.map((item) => [
       esc(item.name),
       esc(siteName(item.site_id)),
-      `${item.cost.toLocaleString("pt-BR")} Koins`,
+      `${item.cost.toLocaleString("pt-BR")} Coins`,
       esc(item.stock),
       esc(item.redemptions),
       statusChip(item.status),
@@ -1372,22 +1987,56 @@ function renderFaq() {
 }
 
 function reportSeries() {
-  const byDay = new Map();
+  const today = todayValue();
+  const byDay = new Map(Array.from({ length: 7 }, (_, index) => {
+    const key = shiftedDateKey(today, index - 6);
+    return [key, { report_date: key, traffic: 0, posts: 0, signups: 0, published: 0, errors: 0 }];
+  }));
   filtered(state.reports).forEach((item) => {
-    const key = item.report_date || todayValue();
-    const current = byDay.get(key) || { report_date: key, traffic: 0, posts: 0, signups: 0 };
+    const key = dateKey(item.report_date) || today;
+    const current = byDay.get(key);
+    if (!current) return;
     current.traffic += item.traffic;
     current.posts += item.posts;
     current.signups += item.signups;
-    byDay.set(key, current);
   });
-  const series = [...byDay.values()].sort((a, b) => new Date(a.report_date) - new Date(b.report_date)).slice(-7);
-  if (series.length) return series;
-  return ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"].map((day) => ({ label: day, traffic: 0, posts: 0, signups: 0 }));
+  filtered(state.content).forEach((item) => {
+    const key = dateKey(item.created_at || item.scheduled_for || item.due_date);
+    const current = byDay.get(key);
+    if (!current) return;
+    current.posts += 1;
+  });
+  filtered(state.distribution).forEach((item) => {
+    const key = dateKey(item.published_at || item.scheduled_for || item.created_at);
+    const current = byDay.get(key);
+    if (!current) return;
+    const status = String(item.status || "").toLowerCase();
+    if (status === "publicado" || item.published_at || item.published_url) current.published += 1;
+    if (status === "erro" || item.error_message) current.errors += 1;
+  });
+  return [...byDay.values()].sort((a, b) => new Date(a.report_date) - new Date(b.report_date));
 }
 
 function renderReports() {
   const series = reportSeries();
+  const stats = currentReportStats();
+  const totals = currentReportTotals();
+  const reportKpis = qs("#reportKpis");
+  if (reportKpis) {
+    reportKpis.innerHTML = [
+      { label: "Posts no painel", value: stats.contentTotal, hint: "rascunhos, aprovados, agendados e publicados" },
+      { label: "Aguardando revisao", value: stats.review, hint: "voce decide postar agora ou agendar" },
+      { label: "Agendados", value: stats.scheduled, hint: "ja enviados para calendario/fila" },
+      { label: "Publicados", value: Math.max(stats.published, stats.publishedTasks), hint: "marcados no painel ou confirmados por tarefa" },
+      { label: "Erros", value: stats.errors, hint: "tarefas que precisam de reenviar/verificar" }
+    ].map((item) => `
+      <article class="kpi">
+        <span>${esc(item.label)}</span>
+        <strong>${esc(item.value)}</strong>
+        <small>${esc(item.hint)}</small>
+      </article>
+    `).join("");
+  }
   const maxTotal = Math.max(1, ...series.map((item) => item.traffic + item.posts + item.signups));
   qs("#tractionChart").innerHTML = series.map((item) => {
     const traffic = Math.round(item.traffic / maxTotal * 100);
@@ -1406,15 +2055,35 @@ function renderReports() {
   }).join("");
   const last = state.auditLog.at(-1);
   qs("#lastAuditLabel").textContent = last ? last.date : "Sem auditoria";
-  const totals = currentReportTotals();
   const summary = [
-    `${state.sites.length} sites cadastrados no inventario principal.`,
-    `${filtered(state.socials).length} redes acompanhadas no filtro atual.`,
-    `${filtered(state.content).filter((item) => item.status !== "Publicado").length} conteudos em producao.`,
-    `${totals.signups} cadastros registrados em relatorios.`,
-    last ? last.summary : "Nenhuma auditoria registrada."
+    {
+      text: `${stats.contentTotal} posts no painel: ${stats.drafts} rascunho(s), ${stats.review} em revisao, ${stats.scheduled} agendado(s), ${stats.published} publicado(s).`,
+      status: stats.review ? "pendente" : "ok"
+    },
+    {
+      text: stats.errors
+        ? `${stats.errors} tarefa(s) de publicacao com erro. Abra Automacoes ou Conteudo para reenviar/verificar.`
+        : "Nenhum erro de publicacao encontrado no filtro atual.",
+      status: stats.errors ? "erro" : "ok"
+    },
+    {
+      text: `${stats.queuedTasks} tarefa(s) em fila/agendadas, ${stats.bufferAccepted} publicada(s) e ${stats.publishedTasks} marcada(s) como publicadas.`,
+      status: stats.queuedTasks ? "pendente" : "info"
+    },
+    {
+      text: `${stats.pendingApprovals} aprovacao(oes) gerais pendentes e ${stats.openSupport} atendimento(s) de suporte em aberto.`,
+      status: stats.pendingApprovals || stats.openSupport ? "pendente" : "ok"
+    },
+    {
+      text: `${totals.traffic} visitas e ${totals.signups} cadastros registrados manualmente. Estes numeros ficam automaticos quando Analytics/API forem conectados.`,
+      status: totals.traffic || totals.signups ? "ok" : "info"
+    },
+    {
+      text: last ? last.summary : "Nenhuma auditoria registrada. Use Auditar para criar um marco de checagem do projeto.",
+      status: last ? "ok" : "info"
+    }
   ];
-  qs("#executiveSummary").innerHTML = summary.map((item) => `<article class="action-row"><p>${esc(item)}</p>${statusChip("info")}</article>`).join("");
+  qs("#executiveSummary").innerHTML = summary.map((item) => `<article class="action-row"><p>${esc(item.text)}</p>${statusChip(item.status)}</article>`).join("");
 }
 
 function renderSettings() {
@@ -1446,7 +2115,6 @@ function renderBackendSettings() {
   if (!form) return;
   if (document.activeElement && form.contains(document.activeElement)) return;
   form.elements.backend_url.value = configuredBackendUrl();
-  form.elements.backend_token.value = backendToken();
 }
 
 function renderAuthSettings() {
@@ -1522,6 +2190,42 @@ function formDateTime(data, name) {
   return value ? new Date(value).toISOString() : null;
 }
 
+function padDatePart(value) {
+  return String(value).padStart(2, "0");
+}
+
+function toDateTimeLocal(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return [
+    date.getFullYear(),
+    padDatePart(date.getMonth() + 1),
+    padDatePart(date.getDate())
+  ].join("-") + `T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+function readableLocalDateTime(value) {
+  return toDateTimeLocal(value).replace("T", " ");
+}
+
+function defaultScheduleDate() {
+  const date = new Date(Date.now() + 60 * 60 * 1000);
+  date.setMinutes(Math.ceil(date.getMinutes() / 15) * 15, 0, 0);
+  return date;
+}
+
+function parseScheduleInput(value) {
+  const raw = String(value || "").trim();
+  if (!raw) throw new Error("Informe data e hora para agendar.");
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) throw new Error("Use uma data valida no formato AAAA-MM-DD HH:mm.");
+  if (date.getTime() < Date.now() + 60 * 1000) {
+    throw new Error("Para publicar agora use o botao Postar agora. Para agendar, escolha um horario futuro.");
+  }
+  return date.toISOString();
+}
+
 function requireSite(data) {
   const siteId = formString(data, "site_id");
   if (!siteId) throw new Error("Cadastre e selecione um site primeiro.");
@@ -1543,7 +2247,58 @@ async function addCollectionRecord(form, collection, payloadFactory, successLabe
   }
 }
 
-async function addSite(form) {
+async function provisionDefaultAutomations(site) {
+  try {
+    for (const template of DEFAULT_AUTOMATION_SLOTS) {
+      const created = await createRecord("automations", {
+        site_id: site.id,
+        name: template.name,
+        schedule: template.schedule,
+        owner: "Automacao",
+        output: template.output,
+        risk: "baixo",
+        status: "ativa",
+        next_action: "Aguardando primeira execucao"
+      });
+      state.automations = [created, ...state.automations.filter((item) => item.id !== created.id)];
+    }
+  } catch (error) {
+    toast(`Site salvo, mas nao foi possivel criar as automacoes padrao: ${error.message}`);
+  }
+}
+
+function setSiteFormMode(siteId = null) {
+  editingSiteId = siteId;
+  const form = qs("#siteForm");
+  const submitLabel = form.querySelector(".form-submit.primary-btn span");
+  const cancel = qs("#cancelSiteEditBtn");
+  if (submitLabel) submitLabel.textContent = siteId ? "Salvar edicao" : "Adicionar";
+  if (cancel) cancel.hidden = !siteId;
+}
+
+function resetSiteForm() {
+  qs("#siteForm").reset();
+  setSiteFormMode(null);
+}
+
+function editSite(siteId) {
+  const site = state.sites.find((item) => item.id === siteId);
+  if (!site) throw new Error("Site nao encontrado.");
+  switchView("sites");
+  const form = qs("#siteForm");
+  form.elements.name.value = site.name || "";
+  form.elements.url.value = site.url || "";
+  form.elements.objective.value = site.objective || "";
+  form.elements.status.value = site.status || "ativo";
+  form.elements.vault_reference.value = site.vault_reference || "";
+  form.elements.api_type.value = site.api_type || "";
+  form.elements.next_action.value = site.next_action || "";
+  form.elements.content_prompt.value = site.content_prompt || "";
+  setSiteFormMode(siteId);
+  form.elements.name.focus();
+}
+
+async function saveSite(form) {
   const data = new FormData(form);
   const site = {
     name: formString(data, "name"),
@@ -1552,10 +2307,20 @@ async function addSite(form) {
     status: formString(data, "status", "ativo"),
     vault_reference: formString(data, "vault_reference"),
     api_type: formString(data, "api_type"),
-    next_action: formString(data, "next_action")
+    next_action: formString(data, "next_action"),
+    content_prompt: formString(data, "content_prompt")
   };
 
   try {
+    if (editingSiteId) {
+      await updateSite(editingSiteId, site);
+      saveState();
+      resetSiteForm();
+      render();
+      toast("Site atualizado.");
+      return;
+    }
+
     const created = await createSite(site);
     state.sites = [created, ...state.sites.filter((item) => item.id !== created.id)];
     saveState();
@@ -1564,6 +2329,9 @@ async function addSite(form) {
     render();
     qs("#siteFilter").value = created.id;
     toast(syncMode === "supabase" ? "Site salvo no Supabase." : "Site salvo no modo local.");
+    await provisionDefaultAutomations(created);
+    saveState();
+    render();
   } catch (error) {
     toast(`Nao foi possivel salvar: ${error.message}`);
   }
@@ -1575,7 +2343,7 @@ function socialPayload(data) {
     channel: formString(data, "channel"),
     handle: formString(data, "handle"),
     profile_url: formString(data, "profile_url"),
-    buffer_channel_id: cleanBufferChannelId(formString(data, "buffer_channel_id")),
+    buffer_channel_id: cleanAccountRef(formString(data, "buffer_channel_id")),
     cadence: formString(data, "cadence"),
     posts_per_month: formNumber(data, "posts_per_month"),
     clicks: formNumber(data, "clicks"),
@@ -1590,7 +2358,7 @@ function automationPayload(data) {
     site_id: requireSite(data),
     name: formString(data, "name"),
     schedule: formString(data, "schedule"),
-    owner: formString(data, "owner", "Codex"),
+    owner: formString(data, "owner", "Automacao"),
     output: formString(data, "output"),
     risk: formString(data, "risk", "baixo"),
     status: formString(data, "status", "ativa"),
@@ -1598,7 +2366,8 @@ function automationPayload(data) {
   };
 }
 
-function contentPayload(data) {
+function contentPayload(data, mode = "post") {
+  const revisionNotes = formString(data, "revision_notes");
   return {
     site_id: requireSite(data),
     title: formString(data, "title"),
@@ -1608,25 +2377,34 @@ function contentPayload(data) {
     status: formString(data, "status", "Rascunho"),
     risk: formString(data, "risk", "baixo"),
     due_date: formString(data, "due_date") || null,
+    scheduled_for: formDateTime(data, "scheduled_for"),
     next_action: formString(data, "next_action"),
     improvement_prompt: formString(data, "improvement_prompt"),
-    revision_notes: formString(data, "revision_notes")
+    revision_notes: mode === "video" ? withVideoMarker(revisionNotes) : stripVideoMarker(revisionNotes)
   };
 }
 
-function setContentFormMode(contentId = null) {
+function setContentFormMode(contentId = null, activeForm = activeContentForm()) {
   editingContentId = contentId;
-  const form = qs("#contentForm");
-  const submitLabel = qs("#contentForm .primary-btn span");
-  const cancel = qs("#cancelContentEditBtn");
-  if (submitLabel) submitLabel.textContent = contentId ? "Salvar edicao" : "Salvar post";
-  if (cancel) cancel.hidden = !contentId;
-  form.dataset.editingId = contentId || "";
+  contentForms().forEach((form) => {
+    const submitLabel = form.querySelector(".form-submit.primary-btn span");
+    const cancel = form.querySelector(".form-submit.secondary-btn");
+    const isActive = form === activeForm;
+    const mode = contentFormMode(form);
+    if (submitLabel) submitLabel.textContent = contentId && isActive ? "Salvar edicao" : mode === "video" ? "Salvar video" : "Salvar post";
+    if (cancel) cancel.hidden = !(contentId && isActive);
+    form.dataset.editingId = contentId && isActive ? contentId : "";
+  });
 }
 
-function setImagePreview(url, label = "Midia selecionada") {
-  const preview = qs("#imagePreview");
+function setImagePreview(url, label = "Midia selecionada", contentType = "", form = activeContentForm()) {
+  const preview = previewForForm(form);
   if (!preview) return;
+  if (previewObjectUrl && previewObjectUrl !== url) {
+    URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = "";
+  }
+  if (String(url || "").startsWith("blob:")) previewObjectUrl = url;
   preview.classList.remove("is-loading");
   preview.removeAttribute("aria-busy");
   preview.removeAttribute("role");
@@ -1636,14 +2414,14 @@ function setImagePreview(url, label = "Midia selecionada") {
     return;
   }
   preview.hidden = false;
-  preview.innerHTML = `<img src="${esc(url)}" alt="${esc(label)}">`;
+  preview.innerHTML = mediaMarkup(url, label, contentType);
 }
 
 function resetContentForm() {
-  const form = qs("#contentForm");
+  const form = activeContentForm();
   form.reset();
-  setImagePreview("");
-  setContentFormMode(null);
+  setImagePreview("", "Midia selecionada", "", form);
+  setContentFormMode(null, form);
   renderFormSiteSelects();
 }
 
@@ -1658,35 +2436,44 @@ function setSelectValue(select, value) {
 function editContent(contentId) {
   const content = state.content.find((item) => item.id === contentId);
   if (!content) throw new Error("Conteudo nao encontrado.");
-  switchView("content");
+  const mode = isVideoContent(content) ? "videos" : "content";
+  switchView(mode);
   renderFormSiteSelects();
-  const form = qs("#contentForm");
+  const form = activeContentForm();
   form.elements.site_id.value = content.site_id || "";
   form.elements.title.value = content.title || "";
   setSelectValue(form.elements.channel, content.channel || "");
   form.elements.body.value = content.body || "";
   form.elements.asset_url.value = content.asset_url || "";
   form.elements.improvement_prompt.value = content.improvement_prompt || "";
-  form.elements.revision_notes.value = content.revision_notes || "";
+  form.elements.revision_notes.value = stripVideoMarker(content.revision_notes || "");
   form.elements.status.value = content.status || "Rascunho";
   form.elements.risk.value = content.risk || "baixo";
   form.elements.due_date.value = content.due_date || "";
+  form.elements.scheduled_for.value = content.scheduled_for ? toDateTimeLocal(content.scheduled_for) : "";
   form.elements.next_action.value = content.next_action || "";
-  setImagePreview(content.asset_url, content.title);
-  setContentFormMode(contentId);
+  setImagePreview(content.asset_url, content.title, "", form);
+  setContentFormMode(contentId, form);
   form.elements.title.focus();
 }
 
 async function saveContent(form) {
-  const data = new FormData(form);
   try {
+    if (mediaUploadPromise) await mediaUploadPromise;
+    const data = new FormData(form);
     const mediaFile = form.elements.media_file?.files?.[0];
     if (mediaFile) {
-      const uploadedUrl = await uploadMediaFile(mediaFile);
-      data.set("asset_url", uploadedUrl);
-      form.elements.asset_url.value = uploadedUrl;
+      if (await cloudMediaUploadEnabled()) {
+        const uploadedUrl = await uploadMediaFile(mediaFile);
+        data.set("asset_url", uploadedUrl);
+        form.elements.asset_url.value = uploadedUrl;
+      } else {
+        data.set("asset_url", form.elements.asset_url.value || "");
+        form.elements.media_file.value = "";
+        toast("Arquivo local ignorado porque o storage esta desligado. O restante do post foi salvo.");
+      }
     }
-    const payload = contentPayload(data);
+    const payload = contentPayload(data, contentFormMode(form));
     if (editingContentId) {
       await updateRecord("content", editingContentId, payload);
       saveState();
@@ -1715,7 +2502,7 @@ function distributionPayload(data) {
     site_id: requireSite(data),
     content_id: formString(data, "content_id") || null,
     target: formString(data, "target"),
-    buffer_channel_id: cleanBufferChannelId(formString(data, "buffer_channel_id")),
+    buffer_channel_id: cleanAccountRef(formString(data, "buffer_channel_id")),
     status: formString(data, "status", "fila"),
     scheduled_for: formDateTime(data, "scheduled_for"),
     published_at: formString(data, "status") === "publicado" ? new Date().toISOString() : null,
@@ -1758,11 +2545,12 @@ function campaignNameFor(content) {
   return `${socialUtmSource(siteName(content.site_id))}_${date.getFullYear()}_${month}`;
 }
 
-async function createDistributionQueueForContent(content) {
+async function createDistributionQueueForContent(content, options = {}) {
+  const scheduledFor = options.scheduledFor === undefined ? content.scheduled_for || null : options.scheduledFor;
   const targets = state.socials.filter((social) =>
     social.site_id === content.site_id &&
     social.status === "ativo" &&
-    cleanBufferChannelId(social.buffer_channel_id) &&
+    cleanAccountRef(social.buffer_channel_id) &&
     contentMatchesSocial(content, social)
   );
   const createdItems = [];
@@ -1770,7 +2558,7 @@ async function createDistributionQueueForContent(content) {
   for (const target of targets) {
     const alreadyQueued = state.distribution.some((task) =>
       task.content_id === content.id &&
-      cleanBufferChannelId(task.buffer_channel_id) === cleanBufferChannelId(target.buffer_channel_id) &&
+      cleanAccountRef(task.buffer_channel_id) === cleanAccountRef(target.buffer_channel_id) &&
       task.status !== "erro"
     );
     if (alreadyQueued) continue;
@@ -1781,9 +2569,9 @@ async function createDistributionQueueForContent(content) {
       site_id: content.site_id,
       content_id: content.id,
       target: target.channel,
-      buffer_channel_id: cleanBufferChannelId(target.buffer_channel_id),
+      buffer_channel_id: cleanAccountRef(target.buffer_channel_id),
       status: "fila",
-      scheduled_for: content.scheduled_for || null,
+      scheduled_for: scheduledFor,
       published_at: null,
       published_url: publishedUrl,
       utm_source: utmSource,
@@ -1797,6 +2585,148 @@ async function createDistributionQueueForContent(content) {
   }
 
   return createdItems;
+}
+
+function requireContentItem(contentId) {
+  const content = state.content.find((item) => item.id === contentId);
+  if (!content) throw new Error("Conteudo nao encontrado.");
+  return content;
+}
+
+function taskIds(tasks) {
+  return tasks.map((task) => task.id).filter(Boolean);
+}
+
+async function updatePendingTaskSchedule(contentId, scheduledFor) {
+  const tasks = pendingDistributionTasksForContent(contentId);
+  for (const task of tasks) {
+    if (String(task.scheduled_for || "") !== String(scheduledFor || "") || task.status !== "fila") {
+      await updateRecord("distribution", task.id, {
+        status: "fila",
+        scheduled_for: scheduledFor,
+        error_message: null
+      });
+    }
+  }
+  return pendingDistributionTasksForContent(contentId);
+}
+
+async function sendContentTasksToBackend(contentId, tasks, publishMode) {
+  updateBackendStatus(publishMode === "now" ? "Postando agora..." : "Agendando publicacao...", "info");
+  const body = {
+    publish_mode: publishMode,
+    content_id: contentId,
+    limit: Math.max(tasks.length, 10)
+  };
+  if (tasks.length) body.task_ids = taskIds(tasks);
+  const result = await backendRequest("/api/publish", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  await syncAllFromSupabase(false);
+  updateBackendStatus("Backend pronto", "ok");
+  return result;
+}
+
+async function publishContentNow(contentId) {
+  const content = requireContentItem(contentId);
+  const now = new Date().toISOString();
+  const patch = {
+    approved_at: content.approved_at || now,
+    scheduled_for: null,
+    next_action: "Publicacao imediata solicitada"
+  };
+  await updateRecord("content", contentId, patch);
+  await createDistributionQueueForContent({ ...content, ...patch }, { scheduledFor: null });
+  await updatePendingTaskSchedule(contentId, null);
+  saveState();
+  render();
+
+  const tasks = pendingDistributionTasksForContent(contentId);
+  if (!tasks.length) {
+    throw new Error("Nao encontrei tarefa pendente. Se esse post ja foi publicado, edite ou cancele a tarefa na aba Distribuicao para evitar duplicar.");
+  }
+
+  const result = await sendContentTasksToBackend(contentId, tasks, "now");
+  const sent = result.results?.filter((item) => item.platformPostId).length || result.published || 0;
+  toast(sent ? `${sent} post(s) enviados para publicacao imediata.` : "Nenhum post novo foi publicado. Confira a fila tecnica.");
+}
+
+async function publishMissingNetworks(contentId) {
+  const content = requireContentItem(contentId);
+  await createDistributionQueueForContent(content, { scheduledFor: null });
+  saveState();
+  render();
+
+  const tasks = pendingDistributionTasksForContent(contentId);
+  const result = await sendContentTasksToBackend(contentId, tasks, "now");
+  const sent = result.results?.filter((item) => item.platformPostId).length || result.published || 0;
+  toast(sent ? `${sent} rede(s) faltante(s) enviadas para publicacao.` : "Nao havia rede faltante pendente. Confira Distribuicao.");
+}
+
+async function scheduleContent(contentId) {
+  const content = requireContentItem(contentId);
+  const defaultValue = readableLocalDateTime(content.scheduled_for || defaultScheduleDate());
+  const answer = window.prompt("Quando publicar? Use horario local no formato AAAA-MM-DD HH:mm.", defaultValue);
+  if (answer === null) {
+    toast("Agendamento cancelado.");
+    return;
+  }
+  const scheduledFor = parseScheduleInput(answer);
+  const patch = {
+    status: "Agendado",
+    approved_at: content.approved_at || new Date().toISOString(),
+    scheduled_for: scheduledFor,
+    next_action: "Agendado para publicacao"
+  };
+  await updateRecord("content", contentId, patch);
+  await createDistributionQueueForContent({ ...content, ...patch }, { scheduledFor });
+  await updatePendingTaskSchedule(contentId, scheduledFor);
+  saveState();
+  render();
+
+  const tasks = pendingDistributionTasksForContent(contentId);
+  if (!tasks.length) {
+    toast("Agendamento salvo, mas nenhuma nova tarefa de publicacao foi criada.");
+    return;
+  }
+
+  const result = await sendContentTasksToBackend(contentId, tasks, "queue");
+  toast(result.published ? `${result.published} post(s) agendados.` : "Agendamento salvo. Nenhum post novo foi enviado.");
+}
+
+async function markContentPublished(contentId) {
+  const content = requireContentItem(contentId);
+  if (!["Agendado", "Aprovacao"].includes(content.status)) {
+    throw new Error("So e possivel marcar como publicado um conteudo agendado ou em aprovacao.");
+  }
+  const ok = window.confirm("Marcar este conteudo como publicado no dashboard? Isso nao publica nas redes; apenas atualiza o status local/Supabase.");
+  if (!ok) {
+    toast("Acao cancelada.");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  await updateRecord("content", contentId, {
+    status: "Publicado",
+    published_at: now,
+    next_action: "Publicado manualmente no dashboard"
+  });
+
+  const relatedTasks = state.distribution.filter((task) => task.content_id === contentId);
+  for (const task of relatedTasks) {
+    await updateRecord("distribution", task.id, {
+      status: "publicado",
+      published_at: task.published_at || now,
+      error_message: null,
+      note: [task.note, "Marcado como publicado manualmente no dashboard."].filter(Boolean).join(" ")
+    });
+  }
+
+  saveState();
+  render();
+  toast("Conteudo marcado como publicado.");
 }
 
 function koinMetricPayload(data) {
@@ -1835,7 +2765,7 @@ function approvalPayload(data) {
 function suggestedReplyFor(category, message) {
   const cleanMessage = message ? ` Sobre sua mensagem: "${message.slice(0, 120)}"` : "";
   const templates = {
-    duvida: `Oi! Obrigado por chamar. Vamos te orientar com clareza.${cleanMessage} Se a duvida for sobre Koins ou premios, confira tambem as regras dentro da sua conta.`,
+    duvida: `Oi! Obrigado por chamar. Vamos te orientar com clareza.${cleanMessage} Se a duvida for sobre Coins ou premios, confira tambem as regras dentro da sua conta.`,
     elogio: "Muito obrigado pelo retorno! Ficamos felizes em saber que a experiencia esta ajudando. Vamos continuar melhorando.",
     reclamacao: "Obrigado por avisar. Vamos analisar o caso com cuidado e retornar com uma posicao. Para seguranca, nao envie senha ou dados sensiveis por aqui.",
     premio: "Obrigado por falar sobre o premio. Vamos conferir o status do resgate e as regras aplicaveis antes de confirmar qualquer prazo.",
@@ -1965,7 +2895,13 @@ document.addEventListener("click", async (event) => {
   if (!actionButton) return;
 
   const { action, id, status, collection } = actionButton.dataset;
+  const wasDisabled = actionButton.disabled;
+  actionButton.disabled = true;
   try {
+    if (action === "editSite") {
+      editSite(id);
+      toast("Editando site.");
+    }
     if (action === "auditSite") {
       await auditSite(id);
     }
@@ -1991,50 +2927,55 @@ document.addEventListener("click", async (event) => {
       toast("Automacao atualizada.");
     }
     if (action === "runAutomation") {
+      const automation = state.automations.find((item) => item.id === id);
+      if (!automation) throw new Error("Automacao nao encontrada.");
+      if (isVideoDraftAutomation(automation)) {
+        await runVideoDraftAutomation(automation);
+        return;
+      }
+      if (isContentDraftAutomation(automation)) {
+        await runContentDraftAutomation(automation);
+        return;
+      }
       await updateRecord("automations", id, { last_run: new Date().toISOString(), status: "ativa" });
       saveState();
       render();
       toast("Execucao registrada.");
+    }
+    if (action === "openContent") {
+      switchView("content");
+      return;
+    }
+    if (action === "openVideos") {
+      switchView("videos");
+      return;
     }
     if (action === "editContent") {
       editContent(id);
       toast("Editando conteudo.");
     }
     if (action === "advanceContent") {
-      const content = state.content.find((item) => item.id === id);
-      const next = content.status === "Rascunho"
-        ? "Aprovacao"
-        : content.status === "Aprovacao"
-          ? "Agendado"
-          : content.status;
-      const patch = { status: next };
-      if (next === "Agendado") patch.approved_at = new Date().toISOString();
-      await updateRecord("content", id, patch);
-      const queued = next === "Agendado" ? await createDistributionQueueForContent({ ...content, ...patch }) : [];
-      let publishResult = null;
-      let publishError = "";
-      if (queued.length && configuredBackendUrl() && backendToken()) {
-        try {
-          publishResult = await backendRequest("/api/publish", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ limit: queued.length })
-          });
-          await syncAllFromSupabase(false);
-        } catch (error) {
-          publishError = error.message;
-        }
-      }
+      const content = requireContentItem(id);
+      if (content.status !== "Rascunho") throw new Error("Use Postar agora ou Agendar para conteudos em aprovacao.");
+      await updateRecord("content", id, {
+        status: "Aprovacao",
+        next_action: "Aprovar: postar agora ou agendar"
+      });
       saveState();
       render();
-      let message = "Conteudo avancou na esteira.";
-      if (next === "Agendado") {
-        if (!queued.length) message = "Conteudo aprovado, mas nenhuma nova tarefa Buffer foi criada.";
-        else if (publishResult?.published) message = `Conteudo aprovado e ${publishResult.published} post(s) enviados ao Buffer.`;
-        else if (publishError) message = `Fila criada, mas o backend nao publicou: ${publishError}`;
-        else message = `Conteudo aprovado: ${queued.length} tarefa(s) criadas. O GitHub Actions publica sozinho.`;
-      }
-      toast(message);
+      toast("Rascunho enviado para revisao. Agora escolha Postar agora ou Agendar.");
+    }
+    if (action === "publishContentNow") {
+      await publishContentNow(id);
+    }
+    if (action === "scheduleContent") {
+      await scheduleContent(id);
+    }
+    if (action === "publishMissingNetworks") {
+      await publishMissingNetworks(id);
+    }
+    if (action === "markContentPublished") {
+      await markContentPublished(id);
     }
     if (action === "rejectContent") {
       await updateRecord("content", id, {
@@ -2053,7 +2994,7 @@ document.addEventListener("click", async (event) => {
       });
       saveState();
       render();
-      toast("Tarefa recolocada na fila do Buffer.");
+      toast("Tarefa recolocada na fila de publicacao.");
     }
     if (action === "suggestReply") {
       const message = state.supportMessages.find((item) => item.id === id);
@@ -2103,13 +3044,17 @@ document.addEventListener("click", async (event) => {
     }
   } catch (error) {
     toast(error.message);
+  } finally {
+    if (document.contains(actionButton)) actionButton.disabled = wasDisabled;
   }
 });
 
 qs("#siteForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addSite(event.currentTarget);
+  saveSite(event.currentTarget);
 });
+
+qs("#cancelSiteEditBtn").addEventListener("click", resetSiteForm);
 
 qs("#socialForm").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -2126,33 +3071,62 @@ qs("#contentForm").addEventListener("submit", (event) => {
   saveContent(event.currentTarget);
 });
 
-qs("#cancelContentEditBtn").addEventListener("click", resetContentForm);
-
-qs("#mediaFileInput").addEventListener("change", (event) => {
-  const [file] = event.target.files;
-  if (!file) {
-    setImagePreview("");
-    return;
-  }
-  if (!["image/jpeg", "image/png"].includes(file.type)) {
-    toast("Envie apenas imagem JPG ou PNG.");
-    event.target.value = "";
-    setImagePreview("");
-    return;
-  }
-  setImagePreview(URL.createObjectURL(file), file.name);
+qs("#videoContentForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveContent(event.currentTarget);
 });
 
+qs("#cancelContentEditBtn").addEventListener("click", resetContentForm);
+qs("#cancelVideoContentEditBtn").addEventListener("click", resetContentForm);
+
+function handleContentMediaChange(event) {
+  const [file] = event.target.files;
+  const form = event.target.form || activeContentForm();
+  if (!file) {
+    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Midia atual", "", form);
+    return;
+  }
+  const isVideoForm = contentFormMode(form) === "video";
+  const allowedTypes = isVideoForm ? ["video/mp4"] : ["image/jpeg", "image/png"];
+  if (!allowedTypes.includes(file.type)) {
+    toast(isVideoForm ? "Envie apenas MP4 nesta aba." : "Envie apenas JPG ou PNG nesta aba.");
+    event.target.value = "";
+    setImagePreview(form.elements.asset_url.value, form.elements.title.value || "Midia atual", "", form);
+    return;
+  }
+  replaceContentMediaFromFile(file, form).catch((error) => {
+    updateBackendStatus("Upload com erro", "risk");
+    toast(error.message);
+  });
+}
+
+qs("#mediaFileInput").addEventListener("change", handleContentMediaChange);
+qs("#videoMediaFileInput").addEventListener("change", handleContentMediaChange);
+
 qs("#generateTextBtn").addEventListener("click", () => {
-  generatePostText().catch((error) => {
+  generatePostText({ form: qs("#contentForm") }).catch((error) => {
     updateBackendStatus("OpenAI com erro", "risk");
     toast(error.message);
   });
 });
 
 qs("#generateImageBtn").addEventListener("click", () => {
-  generatePostImage().catch((error) => {
+  generatePostImage({ form: qs("#contentForm") }).catch((error) => {
     updateBackendStatus("OpenAI com erro", "risk");
+    toast(error.message);
+  });
+});
+
+qs("#videoGenerateTextBtn").addEventListener("click", () => {
+  generatePostText({ form: qs("#videoContentForm") }).catch((error) => {
+    updateBackendStatus("OpenAI com erro", "risk");
+    toast(error.message);
+  });
+});
+
+qs("#videoGenerateVideoBtn").addEventListener("click", () => {
+  generatePostVideo({ form: qs("#videoContentForm") }).catch((error) => {
+    updateBackendStatus("Gemini com erro", "risk");
     toast(error.message);
   });
 });
@@ -2164,6 +3138,18 @@ qs("#generateCompleteBtn").addEventListener("click", () => {
   });
 });
 
+qs("#videoGenerateCompleteVideoBtn").addEventListener("click", () => {
+  generateCompleteVideoPost().catch((error) => {
+    updateBackendStatus("Gemini com erro", "risk");
+    toast(error.message);
+  });
+});
+
+qs("#testBackendVideoBtn").addEventListener("click", () => checkBackendHealth(true));
+qs("#publishVideoNowBtn").addEventListener("click", () => {
+  publishQueueNow().catch((error) => toast(error.message));
+});
+
 qs("#distributionForm").addEventListener("submit", (event) => {
   event.preventDefault();
   addCollectionRecord(event.currentTarget, "distribution", distributionPayload, "Distribuicao");
@@ -2171,7 +3157,7 @@ qs("#distributionForm").addEventListener("submit", (event) => {
 
 qs("#koinMetricForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "koinMetrics", koinMetricPayload, "Metrica de Koins");
+  addCollectionRecord(event.currentTarget, "koinMetrics", koinMetricPayload, "Metrica de Coins");
 });
 
 qs("#prizeForm").addEventListener("submit", (event) => {
@@ -2208,11 +3194,8 @@ qs("#backendSettingsForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
   const backendUrl = formString(data, "backend_url").replace(/\/+$/, "");
-  const token = formString(data, "backend_token");
   if (backendUrl) localStorage.setItem(BACKEND_URL_KEY, backendUrl);
   else localStorage.removeItem(BACKEND_URL_KEY);
-  if (token) localStorage.setItem(BACKEND_TOKEN_KEY, token);
-  else localStorage.removeItem(BACKEND_TOKEN_KEY);
   render();
   toast("Conexao do backend salva neste navegador.");
 });
