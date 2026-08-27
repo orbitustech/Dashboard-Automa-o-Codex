@@ -1,0 +1,45 @@
+name: Deploy Dashboard to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "dashboard/**"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          path: main
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Sync static dashboard into gh-pages
+        run: |
+          find gh-pages -mindepth 1 -maxdepth 1 -not -name ".git" -exec rm -rf {} +
+          cp main/index.html gh-pages/index.html
+          cp -r main/dashboard gh-pages/dashboard
+
+      - name: Commit and push if changed
+        working-directory: gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nada novo para publicar."
+          else
+            git commit -m "Sync dashboard from main@${GITHUB_SHA}"
+            git push origin gh-pages
+          fi
