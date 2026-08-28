@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dashboard Redes Automatico</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230f766e'/%3E%3Ctext x='32' y='40' font-size='30' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'%3EK%3C/text%3E%3C/svg%3E" />
+    <title>Orbitustech - Contas de Midia</title>
+    <link rel="icon" type="image/png" href="assets/orbitus-logo.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -44,6 +44,13 @@
         <circle cx="12" cy="12" r="3" />
         <path d="M19 12a7.5 7.5 0 0 0-.1-1l2-1.6-2-3.5-2.4 1a7 7 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.6c.1-.3.1-.7.1-1Z" />
       </symbol>
+      <symbol id="icon-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+      </symbol>
+      <symbol id="icon-moon" viewBox="0 0 24 24">
+        <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3a7 7 0 1 0 11.5 11.5Z" />
+      </symbol>
       <symbol id="icon-plus" viewBox="0 0 24 24">
         <path d="M12 5v14M5 12h14" />
       </symbol>
@@ -61,17 +68,16 @@
         <path d="M18 4v4h-4M6 20v-4h4" />
       </symbol>
       <symbol id="icon-support" viewBox="0 0 24 24">
-        <path d="M5 12a7 7 0 0 1 14 0v5a2 2 0 0 1-2 2h-2" />
-        <path d="M5 12v3a2 2 0 0 0 2 2h1v-6H7a2 2 0 0 0-2 2M19 12v3a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2" />
-        <path d="M12 19h3" />
+        <rect x="5" y="10" width="14" height="10" rx="2" />
+        <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
       </symbol>
     </svg>
 
     <section id="authGate" class="auth-gate" hidden>
       <div class="auth-card">
-        <div class="brand-mark">K</div>
+        <div class="brand-mark" aria-label="Orbitustech"></div>
         <p class="eyebrow">Login AWS</p>
-        <h1>Entrar no Dashboard Redes Automatico</h1>
+        <h1>Entrar no Orbitustech</h1>
         <p>Entre com uma conta aprovada no Cognito. Se ainda nao tiver acesso, crie a conta e aguarde a aprovacao no AWS.</p>
         <div class="row-actions">
           <button class="primary-btn" id="awsGateLoginBtn" type="button">
@@ -86,10 +92,10 @@
     <div class="app-shell" hidden>
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark">K</div>
+          <div class="brand-mark" aria-label="Orbitustech"></div>
           <div>
-            <p class="eyebrow">Operacao</p>
-            <h1>KoinOps</h1>
+            <p class="eyebrow">Painel de Controle</p>
+            <h1>Contas de Midia</h1>
           </div>
         </div>
 
@@ -118,8 +124,8 @@
           <button class="nav-item" data-view="approvals" title="Aprovacoes">
             <svg><use href="#icon-approval"></use></svg><span>Aprovacoes</span>
           </button>
-          <button class="nav-item" data-view="support" title="Suporte e comunidade">
-            <svg><use href="#icon-support"></use></svg><span>Suporte</span>
+          <button class="nav-item" data-view="support" title="Cofre de contas">
+            <svg><use href="#icon-support"></use></svg><span>Cofre</span>
           </button>
           <button class="nav-item" data-view="reports" title="Relatorios">
             <svg><use href="#icon-report"></use></svg><span>Relatorios</span>
@@ -131,7 +137,7 @@
 
         <div class="sidebar-note">
           <p class="eyebrow">Regra central</p>
-          <p>Senhas ficam no cofre. O dashboard guarda referencia, status e permissao.</p>
+          <p>Credenciais de redes e e-mails ficam na aba Cofre. Restrinja o acesso ao Supabase antes de guardar dados sensiveis.</p>
         </div>
       </aside>
 
@@ -147,6 +153,10 @@
             <span class="sync-status" id="authStatus">Login AWS pendente</span>
             <button class="secondary-btn compact-btn" id="loginBtn" type="button">Login AWS</button>
             <button class="secondary-btn compact-btn" id="logoutBtn" type="button" hidden>Sair</button>
+            <button class="icon-btn theme-toggle" id="themeToggleBtn" title="Alternar modo escuro" type="button">
+              <svg class="theme-icon theme-icon-moon"><use href="#icon-moon"></use></svg>
+              <svg class="theme-icon theme-icon-sun"><use href="#icon-sun"></use></svg>
+            </button>
             <label class="field search-field">
               <span>Buscar</span>
               <input id="searchInput" type="search" placeholder="site, canal, premio..." />
@@ -651,39 +661,52 @@
         <section id="support" class="view" aria-labelledby="support-title">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Comunidade</p>
-              <h3 id="support-title">Suporte, comentarios e FAQ</h3>
+              <p class="eyebrow">Seguranca operacional</p>
+              <h3 id="support-title">Cofre de redes e e-mails</h3>
             </div>
           </div>
+          <p class="muted">Credenciais salvas aqui ficam em texto no banco de dados. Restrinja o acesso ao Supabase (RLS) antes de guardar segredos sensiveis nesta aba.</p>
           <form id="supportForm" class="form-grid panel" autocomplete="off">
             <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-            <label class="field"><span>Origem</span><input name="source" placeholder="Instagram, email, chat..." /></label>
-            <label class="field"><span>Autor</span><input name="author" placeholder="Nome ou @usuario" /></label>
             <label class="field">
-              <span>Categoria</span>
+              <span>Plataforma</span>
+              <select name="source" required>
+                <option value="Instagram">Instagram</option>
+                <option value="TikTok">TikTok</option>
+                <option value="Facebook">Facebook</option>
+                <option value="Threads">Threads</option>
+                <option value="Google/Gmail">Google/Gmail</option>
+                <option value="YouTube">YouTube</option>
+                <option value="X/Twitter">X/Twitter</option>
+                <option value="Outra rede">Outra rede</option>
+              </select>
+            </label>
+            <label class="field"><span>Login / e-mail</span><input name="author" required placeholder="email, usuario ou @perfil" /></label>
+            <label class="field">
+              <span>Tipo</span>
               <select name="category">
-                <option value="duvida">Duvida</option>
-                <option value="elogio">Elogio</option>
-                <option value="reclamacao">Reclamacao</option>
-                <option value="premio">Premio</option>
-                <option value="bug">Bug</option>
-                <option value="fraude">Fraude</option>
-                <option value="parceria">Parceria</option>
+                <option value="senha">Senha principal</option>
+                <option value="senha_email">Senha de e-mail</option>
+                <option value="codigo_2fa">Codigo 2FA / backup</option>
+                <option value="recuperacao">Recuperacao de conta</option>
+                <option value="outro">Outro segredo</option>
               </select>
             </label>
             <label class="field">
-              <span>Risco</span>
+              <span>Uso</span>
               <select name="risk">
-                <option value="baixo">Baixo</option>
-                <option value="medio">Medio</option>
-                <option value="alto">Alto</option>
+                <option value="perfil_principal">Perfil principal</option>
+                <option value="perfil_teste">Perfil de teste</option>
+                <option value="email_recuperacao">E-mail de recuperacao</option>
+                <option value="admin">Admin</option>
               </select>
             </label>
-            <label class="field wide-field"><span>Mensagem</span><textarea name="message" required placeholder="Cole aqui o comentario ou mensagem recebida"></textarea></label>
-            <label class="field wide-field"><span>Resposta sugerida</span><textarea name="suggested_reply" placeholder="Pode deixar vazio para gerar sugestao automatica"></textarea></label>
+            <label class="field wide-field"><span>Senha / segredo</span><textarea name="message" required placeholder="Cole aqui a senha, codigo backup ou informacao sensivel da conta" autocomplete="new-password"></textarea></label>
+            <label class="field wide-field"><span>Observacoes</span><textarea name="suggested_reply" placeholder="Ex: URL de login, telefone de recuperacao, perfil associado, quando rotacionar"></textarea></label>
             <button class="primary-btn form-submit" type="submit">
-              <svg><use href="#icon-plus"></use></svg><span>Adicionar</span>
+              <svg><use href="#icon-plus"></use></svg><span>Salvar credencial</span>
             </button>
+            <button class="secondary-btn form-submit" id="cancelVaultEditBtn" type="button" hidden>Cancelar edicao</button>
           </form>
           <div id="supportList" class="approval-list"></div>
 
@@ -721,6 +744,7 @@
             </div>
           </div>
           <div id="reportKpis" class="kpi-grid"></div>
+          <div id="reportActivity" class="report-activity panel"></div>
           <form id="reportForm" class="form-grid panel" autocomplete="off">
             <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
             <label class="field"><span>Data</span><input name="report_date" type="date" required /></label>

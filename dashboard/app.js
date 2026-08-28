@@ -4,6 +4,7 @@ const AUTH_CONFIG_KEY = "koinops-auth-config";
 const AUTH_SESSION_KEY = "koinops-auth-session";
 const AUTH_VERIFIER_KEY = "koinops-auth-verifier";
 const AUTH_STATE_KEY = "koinops-auth-state";
+const THEME_KEY = "orbitustech-theme";
 const supabaseConfig = window.KOINOPS_SUPABASE || {};
 const backendConfig = window.KOINOPS_BACKEND || {};
 const authDefaults = window.KOINOPS_AUTH || {};
@@ -56,6 +57,7 @@ let currentView = "overview";
 let syncMode = "local";
 let editingContentId = null;
 let editingSiteId = null;
+let editingVaultId = null;
 let mediaUploadPromise = null;
 let mediaUploadToken = 0;
 let previewObjectUrl = "";
@@ -74,7 +76,7 @@ const titles = {
   videos: "Videos",
   koins: "Coins e premios",
   approvals: "Aprovacoes",
-  support: "Suporte",
+  support: "Cofre",
   reports: "Relatorios",
   settings: "Governanca"
 };
@@ -192,6 +194,22 @@ function esc(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function applyTheme(theme = localStorage.getItem(THEME_KEY) || "light") {
+  const normalized = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = normalized;
+  localStorage.setItem(THEME_KEY, normalized);
+  const button = qs("#themeToggleBtn");
+  if (button) {
+    button.title = normalized === "dark" ? "Alternar para modo claro" : "Alternar para modo escuro";
+    button.setAttribute("aria-label", button.title);
+    button.dataset.theme = normalized;
+  }
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 }
 
 function cleanAccountRef(value) {
@@ -1127,9 +1145,9 @@ function normalizeSupportMessages(items) {
     source: item.source || "",
     author: item.author || "",
     message: item.message || "",
-    category: item.category || "duvida",
-    risk: item.risk || "baixo",
-    status: item.status || "novo",
+    category: item.category || "senha",
+    risk: item.risk || "perfil_principal",
+    status: item.status || "ativo",
     suggested_reply: item.suggested_reply || "",
     final_reply: item.final_reply || "",
     created_at: item.created_at || null,
@@ -1551,10 +1569,10 @@ function renderNextActions() {
     detail: `${siteName(item.site_id)} - ${item.target || "sem destino"}`,
     risk: item.status === "erro" ? "alto" : "baixo"
   }));
-  const supportActions = filtered(state.supportMessages).filter((item) => ["novo", "sugerido", "aprovacao"].includes(item.status)).map((item) => ({
-    title: `Responder ${item.category}: ${item.author || item.source || "sem autor"}`,
-    detail: `${siteName(item.site_id)} - ${item.status}`,
-    risk: item.risk
+  const supportActions = filtered(state.supportMessages).filter((item) => ["novo", "ativo"].includes(item.status)).map((item) => ({
+    title: `Revisar cofre: ${item.source || "conta"}`,
+    detail: `${siteName(item.site_id)} - ${item.author || item.category || "sem login"}`,
+    risk: "baixo"
   }));
   const approvalActions = filtered(state.approvals)
     .filter((item) => item.status === "pendente")
@@ -1628,7 +1646,7 @@ function currentReportStats() {
     publishedTasks: distribution.filter((item) => isStatus(item, "publicado") || item.published_at || item.published_url).length,
     errors: distribution.filter((item) => isStatus(item, "erro") || item.error_message).length,
     pendingApprovals: approvals.filter((item) => isStatus(item, "pendente")).length,
-    openSupport: support.filter((item) => !["respondido", "fechado"].includes(String(item.status || "").toLowerCase())).length,
+    openSupport: support.filter((item) => !["fechado", "revogado"].includes(String(item.status || "").toLowerCase())).length,
     manualTraffic: reports.reduce((total, item) => total + item.traffic, 0),
     manualSignups: reports.reduce((total, item) => total + item.signups, 0)
   };
@@ -1946,26 +1964,40 @@ function renderApprovals() {
   `).join("") : emptyState("Nenhuma aprovacao encontrada para o filtro atual.");
 }
 
+function vaultLabel(value) {
+  const labels = {
+    senha: "Senha principal",
+    senha_email: "Senha de e-mail",
+    codigo_2fa: "Codigo 2FA / backup",
+    recuperacao: "Recuperacao de conta",
+    outro: "Outro segredo",
+    perfil_principal: "Perfil principal",
+    perfil_teste: "Perfil de teste",
+    email_recuperacao: "E-mail de recuperacao",
+    admin: "Admin"
+  };
+  return labels[value] || value || "";
+}
+
 function renderSupport() {
   const messages = filtered(state.supportMessages);
   qs("#supportList").innerHTML = messages.length ? messages.map((item) => `
     <article class="approval-row">
       <div>
-        <h5>${esc(item.category)} - ${esc(item.author || item.source || "sem autor")}</h5>
-        <p>${esc(siteName(item.site_id))} - ${esc(item.source || "sem origem")}</p>
-        <p>${esc(item.message)}</p>
+        <h5>${esc(item.source || "Plataforma sem nome")} - ${esc(vaultLabel(item.category) || "Credencial")}</h5>
+        <p>${esc(siteName(item.site_id))} - ${esc(item.author || "sem identificador")} - ${esc(vaultLabel(item.risk) || "uso nao definido")}</p>
+        <div class="reply-box" id="vaultSecret-${esc(item.id)}" hidden>${esc(item.message)}</div>
         ${item.suggested_reply ? `<div class="reply-box">${esc(item.suggested_reply)}</div>` : ""}
       </div>
       <div class="row-actions">
-        ${riskChip(item.risk)}
         ${statusChip(item.status)}
-        ${!item.suggested_reply ? miniButton("suggestReply", item.id, "Sugerir") : ""}
-        ${item.status !== "respondido" ? miniButton("markResponded", item.id, "Respondido", "approve") : ""}
-        ${miniButton("supportToFaq", item.id, "FAQ") }
+        ${miniButton("toggleVaultSecret", item.id, "Revelar")}
+        ${miniButton("copyVaultValue", item.id, "Copiar", "approve")}
+        ${miniButton("editVaultCredential", item.id, "Editar")}
         ${miniButton("deleteRecord", item.id, "Excluir", "reject", "supportMessages")}
       </div>
     </article>
-  `).join("") : emptyState("Nenhuma mensagem de suporte encontrada.");
+  `).join("") : emptyState("Nenhuma credencial encontrada.");
 }
 
 function renderFaq() {
@@ -2037,6 +2069,35 @@ function renderReports() {
       </article>
     `).join("");
   }
+  const activity = qs("#reportActivity");
+  if (activity) {
+    const activeNetworks = filtered(state.socials).filter((item) => item.status === "ativo").length;
+    const trackedClicks = filtered(state.socials).reduce((total, item) => total + (item.clicks || 0), 0);
+    activity.innerHTML = `
+      <div class="report-auto-grid">
+        <article>
+          <span>Site analisado</span>
+          <strong>${esc(siteName(filters.siteId))}</strong>
+          <small>O seletor do topo muda todos os numeros desta tela.</small>
+        </article>
+        <article>
+          <span>Fluxo editorial</span>
+          <strong>${esc(stats.drafts)} rascunho(s), ${esc(stats.review)} em revisao</strong>
+          <small>Conteudo e Videos controlam aprovacao, postagem imediata e agendamento.</small>
+        </article>
+        <article>
+          <span>Distribuicao</span>
+          <strong>${esc(stats.publishedTasks)} publicada(s), ${esc(stats.queuedTasks)} em fila</strong>
+          <small>APIs oficiais das redes publicam direto quando aprovado.</small>
+        </article>
+        <article>
+          <span>Redes</span>
+          <strong>${esc(activeNetworks)} ativa(s), ${esc(trackedClicks)} clique(s)</strong>
+          <small>Cliques atuais vem dos registros da aba Redes.</small>
+        </article>
+      </div>
+    `;
+  }
   const maxTotal = Math.max(1, ...series.map((item) => item.traffic + item.posts + item.signups));
   qs("#tractionChart").innerHTML = series.map((item) => {
     const traffic = Math.round(item.traffic / maxTotal * 100);
@@ -2071,7 +2132,7 @@ function renderReports() {
       status: stats.queuedTasks ? "pendente" : "info"
     },
     {
-      text: `${stats.pendingApprovals} aprovacao(oes) gerais pendentes e ${stats.openSupport} atendimento(s) de suporte em aberto.`,
+      text: `${stats.pendingApprovals} aprovacao(oes) gerais pendentes e ${stats.openSupport} credencial(is) ativa(s) no cofre.`,
       status: stats.pendingApprovals || stats.openSupport ? "pendente" : "ok"
     },
     {
@@ -2762,36 +2823,83 @@ function approvalPayload(data) {
   };
 }
 
-function suggestedReplyFor(category, message) {
-  const cleanMessage = message ? ` Sobre sua mensagem: "${message.slice(0, 120)}"` : "";
-  const templates = {
-    duvida: `Oi! Obrigado por chamar. Vamos te orientar com clareza.${cleanMessage} Se a duvida for sobre Coins ou premios, confira tambem as regras dentro da sua conta.`,
-    elogio: "Muito obrigado pelo retorno! Ficamos felizes em saber que a experiencia esta ajudando. Vamos continuar melhorando.",
-    reclamacao: "Obrigado por avisar. Vamos analisar o caso com cuidado e retornar com uma posicao. Para seguranca, nao envie senha ou dados sensiveis por aqui.",
-    premio: "Obrigado por falar sobre o premio. Vamos conferir o status do resgate e as regras aplicaveis antes de confirmar qualquer prazo.",
-    bug: "Obrigado pelo aviso. Vamos registrar o problema e verificar o fluxo. Se puder, envie horario aproximado e o passo em que ocorreu.",
-    fraude: "Obrigado pelo alerta. Esse caso precisa de revisao manual por seguranca. Vamos encaminhar para analise antes de qualquer acao.",
-    parceria: "Obrigado pelo interesse. Vamos revisar a proposta e retornar caso exista encaixe com nossos criterios de parceria."
-  };
-  return templates[category] || templates.duvida;
-}
-
-function supportPayload(data) {
-  const category = formString(data, "category", "duvida");
-  const risk = formString(data, "risk", "baixo");
-  const message = formString(data, "message");
-  const suggested = formString(data, "suggested_reply") || suggestedReplyFor(category, message);
+function vaultPayload(data) {
   return {
     site_id: requireSite(data),
     source: formString(data, "source"),
     author: formString(data, "author"),
-    message,
-    category,
-    risk,
-    status: risk === "alto" || ["reclamacao", "premio", "fraude"].includes(category) ? "aprovacao" : "sugerido",
-    suggested_reply: suggested,
+    message: formString(data, "message"),
+    category: formString(data, "category", "senha"),
+    risk: formString(data, "risk", "perfil_principal"),
+    status: "ativo",
+    suggested_reply: formString(data, "suggested_reply"),
     final_reply: ""
   };
+}
+
+function toggleVaultSecret(id) {
+  const box = document.getElementById(`vaultSecret-${id}`);
+  if (!box) return;
+  box.hidden = !box.hidden;
+}
+
+async function copyVaultValue(id) {
+  const item = state.supportMessages.find((entry) => entry.id === id);
+  if (!item) throw new Error("Credencial nao encontrada.");
+  await navigator.clipboard.writeText(item.message || "");
+  toast("Credencial copiada.");
+}
+
+function editVaultCredential(id) {
+  const item = state.supportMessages.find((entry) => entry.id === id);
+  if (!item) throw new Error("Credencial nao encontrada.");
+  const form = qs("#supportForm");
+  editingVaultId = id;
+  form.elements.site_id.value = item.site_id || "";
+  form.elements.source.value = item.source || "";
+  form.elements.author.value = item.author || "";
+  form.elements.category.value = item.category || "senha";
+  form.elements.risk.value = item.risk || "perfil_principal";
+  form.elements.message.value = item.message || "";
+  form.elements.suggested_reply.value = item.suggested_reply || "";
+  const submitLabel = form.querySelector(".form-submit.primary-btn span");
+  if (submitLabel) submitLabel.textContent = "Atualizar credencial";
+  qs("#cancelVaultEditBtn").hidden = false;
+  switchView("support");
+  form.elements.source.focus();
+}
+
+function cancelVaultEdit() {
+  editingVaultId = null;
+  const form = qs("#supportForm");
+  form.reset();
+  const submitLabel = form.querySelector(".form-submit.primary-btn span");
+  if (submitLabel) submitLabel.textContent = "Salvar credencial";
+  qs("#cancelVaultEditBtn").hidden = true;
+}
+
+async function saveVaultCredential(form) {
+  const data = new FormData(form);
+  try {
+    const payload = vaultPayload(data);
+    if (editingVaultId) {
+      await updateRecord("supportMessages", editingVaultId, payload);
+      saveState();
+      cancelVaultEdit();
+      render();
+      toast("Credencial atualizada.");
+      return;
+    }
+
+    const created = await createRecord("supportMessages", payload);
+    state.supportMessages = [created, ...state.supportMessages.filter((item) => item.id !== created.id)];
+    saveState();
+    form.reset();
+    render();
+    toast(syncMode === "supabase" ? "Credencial salva no Supabase." : "Credencial salva no modo local.");
+  } catch (error) {
+    toast(error.message);
+  }
 }
 
 function faqPayload(data) {
@@ -2996,39 +3104,14 @@ document.addEventListener("click", async (event) => {
       render();
       toast("Tarefa recolocada na fila de publicacao.");
     }
-    if (action === "suggestReply") {
-      const message = state.supportMessages.find((item) => item.id === id);
-      await updateRecord("supportMessages", id, {
-        status: message.risk === "alto" ? "aprovacao" : "sugerido",
-        suggested_reply: suggestedReplyFor(message.category, message.message)
-      });
-      saveState();
-      render();
-      toast("Resposta sugerida.");
+    if (action === "toggleVaultSecret") {
+      toggleVaultSecret(id);
     }
-    if (action === "markResponded") {
-      const message = state.supportMessages.find((item) => item.id === id);
-      await updateRecord("supportMessages", id, {
-        status: "respondido",
-        final_reply: message.suggested_reply || message.final_reply
-      });
-      saveState();
-      render();
-      toast("Mensagem marcada como respondida.");
+    if (action === "copyVaultValue") {
+      await copyVaultValue(id);
     }
-    if (action === "supportToFaq") {
-      const message = state.supportMessages.find((item) => item.id === id);
-      const created = await createRecord("faqEntries", {
-        site_id: message.site_id,
-        topic: message.category,
-        question: message.message,
-        answer: message.suggested_reply || suggestedReplyFor(message.category, message.message),
-        status: "rascunho"
-      });
-      state.faqEntries = [created, ...state.faqEntries.filter((item) => item.id !== created.id)];
-      saveState();
-      render();
-      toast("FAQ criada como rascunho.");
+    if (action === "editVaultCredential") {
+      editVaultCredential(id);
     }
     if (action === "publishFaq") {
       await updateRecord("faqEntries", id, { status: "publicado" });
@@ -3172,8 +3255,10 @@ qs("#approvalForm").addEventListener("submit", (event) => {
 
 qs("#supportForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "supportMessages", supportPayload, "Mensagem");
+  saveVaultCredential(event.currentTarget);
 });
+
+qs("#cancelVaultEditBtn").addEventListener("click", cancelVaultEdit);
 
 qs("#faqForm").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -3226,6 +3311,7 @@ qs("#siteFilter").addEventListener("change", (event) => {
   render();
 });
 
+qs("#themeToggleBtn").addEventListener("click", toggleTheme);
 qs("#runAuditBtn").addEventListener("click", runAudit);
 qs("#syncBtn").addEventListener("click", () => syncAllFromSupabase(true));
 qs("#testBackendBtn").addEventListener("click", () => testBackend(true));
@@ -3265,6 +3351,7 @@ qs("#addSiteQuickBtn").addEventListener("click", () => {
 
 async function initDashboard() {
   await finishAwsLoginIfNeeded();
+  applyTheme();
   render();
   syncAllFromSupabase(false);
 }
