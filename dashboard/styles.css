@@ -1,18 +1,137 @@
 :root {
-  --bg: #eef2f6;
+  --bg: #eef3f8;
   --surface: #ffffff;
-  --surface-soft: #f7f9fc;
-  --ink: #172033;
-  --muted: #657184;
-  --line: #d9e1eb;
-  --blue: #2367a6;
-  --teal: #0f766e;
-  --green: #24845b;
-  --amber: #9a6700;
-  --red: #b42318;
-  --slate: #243247;
-  --shadow: 0 14px 40px rgba(25, 40, 66, 0.1);
+  --surface-soft: #f6f8fc;
+  --ink: #0d1728;
+  --muted: #8494b1;
+  --line: #dbe4f1;
+  --blue: #5b57ff;
+  --teal: #10b981;
+  --green: #0ead7a;
+  --amber: #b96b00;
+  --red: #d0183d;
+  --slate: #1d2a3d;
+  --navy: #162237;
+  --navy-soft: #202f47;
+  --purple: #5b57ff;
+  --purple-soft: #eef0ff;
+  --shadow: 0 12px 28px rgba(20, 33, 54, 0.12);
   --radius: 8px;
+}
+
+:root[data-theme="dark"] {
+  --bg: #111b2d;
+  --surface: #1d2a42;
+  --surface-soft: #263754;
+  --ink: #f7fbff;
+  --muted: #9fb0ce;
+  --line: #354762;
+  --slate: #e5edff;
+  --navy: #101827;
+  --navy-soft: #1b2942;
+  --purple-soft: #272b68;
+  --shadow: 0 16px 34px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .topbar,
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .auth-card,
+:root[data-theme="dark"] .field input,
+:root[data-theme="dark"] .field select,
+:root[data-theme="dark"] .field textarea,
+:root[data-theme="dark"] .icon-btn,
+:root[data-theme="dark"] .secondary-btn,
+:root[data-theme="dark"] .ghost-btn,
+:root[data-theme="dark"] .data-table,
+:root[data-theme="dark"] .matrix-item,
+:root[data-theme="dark"] .kanban-column,
+:root[data-theme="dark"] .content-item,
+:root[data-theme="dark"] .action-row,
+:root[data-theme="dark"] .vault-row,
+:root[data-theme="dark"] .workflow-strip article,
+:root[data-theme="dark"] .backend-actionbar,
+:root[data-theme="dark"] .muted-box,
+:root[data-theme="dark"] .toast {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .field input::placeholder,
+:root[data-theme="dark"] .field textarea::placeholder {
+  color: #7182a0;
+}
+
+:root[data-theme="dark"] .icon-btn:hover,
+:root[data-theme="dark"] .secondary-btn:hover,
+:root[data-theme="dark"] .ghost-btn:hover {
+  background: var(--surface-soft);
+}
+
+:root[data-theme="dark"] .sync-status {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+:root[data-theme="dark"] .sync-status[data-type="ok"],
+:root[data-theme="dark"] .chip.ok {
+  color: #052e16;
+  background: #bbf7d0;
+  border-color: #86efac;
+}
+
+:root[data-theme="dark"] .sync-status[data-type="warn"],
+:root[data-theme="dark"] .chip.warn {
+  color: #451a03;
+  background: #fde68a;
+  border-color: #fbbf24;
+}
+
+:root[data-theme="dark"] .sync-status[data-type="risk"],
+:root[data-theme="dark"] .chip.risk {
+  color: #450a0a;
+  background: #fecaca;
+  border-color: #f87171;
+}
+
+:root[data-theme="dark"] .chip.info {
+  color: #082f49;
+  background: #bfdbfe;
+}
+
+:root[data-theme="dark"] .automation-plan-panel,
+:root[data-theme="dark"] .kpi,
+:root[data-theme="dark"] .bar-track,
+:root[data-theme="dark"] .metric-pair div,
+:root[data-theme="dark"] .media-dropzone,
+:root[data-theme="dark"] .upload-card,
+:root[data-theme="dark"] .reply-box,
+:root[data-theme="dark"] .vault-card {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .data-table th,
+:root[data-theme="dark"] .data-table td {
+  border-color: var(--line);
+}
+
+:root[data-theme="dark"] .data-table th {
+  background: #162238;
+}
+
+:root[data-theme="dark"] .content-preview {
+  background: #111827;
+}
+
+:root[data-theme="dark"] .sidebar-note {
+  background: rgba(91, 87, 255, 0.18);
+}
+
+:root[data-theme="dark"] .nav-item:hover,
+:root[data-theme="dark"] .nav-item.active {
+  background: rgba(91, 87, 255, 0.28);
 }
 
 * {
@@ -82,7 +201,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 264px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -90,30 +209,34 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: 22px 16px;
-  background: #101827;
-  color: #edf4ff;
+  padding: 24px 14px;
+  background: var(--navy);
+  color: #f7fbff;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 6px;
+  display: grid;
+  gap: 14px;
+  align-items: start;
+  padding: 0 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: #0f766e;
-  border-radius: var(--radius);
-  font-weight: 800;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 0;
+  background-image: url("assets/orbitus-logo.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  font-size: 0;
+  flex: 0 0 auto;
 }
 
 .brand h1,
@@ -125,7 +248,8 @@ button {
 }
 
 .brand h1 {
-  font-size: 20px;
+  font-size: 24px;
+  line-height: 1.12;
 }
 
 .eyebrow {
@@ -160,8 +284,8 @@ button {
 .nav-item {
   width: 100%;
   justify-content: flex-start;
-  padding: 10px 12px;
-  color: #d7e2f0;
+  padding: 12px 14px;
+  color: #dbe6f6;
   background: transparent;
 }
 
@@ -181,14 +305,15 @@ button {
 .nav-item:hover,
 .nav-item.active {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(91, 87, 255, 0.2);
+  outline: 1px solid rgba(91, 87, 255, 0.5);
 }
 
 .sidebar-note {
   margin-top: auto;
   padding: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(91, 87, 255, 0.12);
+  border: 1px solid rgba(91, 87, 255, 0.42);
   border-radius: var(--radius);
 }
 
@@ -208,7 +333,11 @@ button {
   grid-template-columns: minmax(220px, 1fr) auto;
   gap: 18px;
   align-items: center;
-  margin-bottom: 20px;
+  margin: -24px -24px 22px;
+  padding: 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 2px 10px rgba(20, 33, 54, 0.06);
 }
 
 .topbar h2 {
@@ -285,7 +414,7 @@ button {
 .field select:focus,
 .field textarea:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(35, 103, 166, 0.14);
+  box-shadow: 0 0 0 3px rgba(91, 87, 255, 0.14);
 }
 
 .field textarea {
@@ -309,6 +438,27 @@ button {
   border: 1px solid var(--line);
 }
 
+.theme-toggle {
+  position: relative;
+}
+
+.theme-toggle .theme-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.theme-toggle .theme-icon-sun {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .theme-icon-moon {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .theme-icon-sun {
+  display: block;
+}
+
 .icon-btn:hover,
 .secondary-btn:hover,
 .ghost-btn:hover {
@@ -319,12 +469,12 @@ button {
   min-width: 124px;
   padding: 0 14px;
   color: #ffffff;
-  background: var(--teal);
+  background: var(--purple);
   font-weight: 700;
 }
 
 .primary-btn:hover {
-  background: #0b655f;
+  background: #4945e8;
 }
 
 .primary-btn:disabled,
@@ -582,6 +732,11 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-soft);
+}
+
+.vault-card {
+  background: #f8f9ff;
+  border-color: #c9d0ff;
 }
 
 .action-row h5,
@@ -1142,6 +1297,27 @@ button {
   color: var(--slate);
 }
 
+.vault-master-field {
+  min-width: min(360px, 100%);
+}
+
+.vault-secret-state {
+  font-weight: 700;
+  color: var(--slate);
+}
+
+.muted-box {
+  background: #f6f8fb;
+  color: var(--muted);
+}
+
+#supportList .reply-box:not(.muted-box) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
 .line-bars {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -1162,6 +1338,38 @@ button {
 .line-bar span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.report-activity {
+  margin: 14px 0;
+}
+
+.report-auto-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.report-auto-grid article {
+  display: grid;
+  gap: 6px;
+  min-height: 116px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.report-auto-grid span,
+.report-auto-grid small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.report-auto-grid strong {
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.25;
 }
 
 .line-stack {
@@ -1231,7 +1439,8 @@ button {
   .kanban,
   .workflow-strip,
   .automation-plan-metrics,
-  .automation-schedule-list {
+  .automation-schedule-list,
+  .report-auto-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1368,7 +1577,8 @@ button {
   .topbar {
     grid-template-columns: 1fr;
     gap: 10px;
-    margin-bottom: 14px;
+    margin: -12px -10px 14px;
+    padding: 12px 10px;
   }
 
   .topbar h2 {
@@ -1579,6 +1789,10 @@ button {
   .line-bars {
     gap: 6px;
     height: 220px;
+  }
+
+  .report-auto-grid {
+    grid-template-columns: 1fr;
   }
 }
 
