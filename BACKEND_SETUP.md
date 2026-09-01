@@ -26,7 +26,7 @@ SUPABASE_URL=https://nbbprjduqtndkwbknyud.supabase.co
 SUPABASE_ANON_KEY=chave-publicavel-ou-anon
 SUPABASE_SERVICE_ROLE_KEY=service-role-do-supabase
 SUPABASE_STORAGE_BUCKET=content-assets
-KOINOPS_ALLOWED_ORIGIN=https://nicolasorbithustech.github.io
+KOINOPS_ALLOWED_ORIGIN=https://orbitustech.github.io
 ```
 
 Mais o token de cada rede social que for usar (preencha so o que ja tiver acesso aprovado na plataforma):

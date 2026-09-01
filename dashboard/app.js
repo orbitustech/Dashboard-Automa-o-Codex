@@ -46,7 +46,6 @@ const tableConfig = {
   prizes: { table: "prizes", order: "created_at.desc", normalize: normalizePrizes },
   koinMetrics: { table: "koin_metrics", order: "measured_at.desc", normalize: normalizeKoinMetrics },
   approvals: { table: "approvals", order: "created_at.desc", normalize: normalizeApprovals },
-  supportMessages: { table: "support_messages", order: "created_at.desc", normalize: normalizeSupportMessages },
   faqEntries: { table: "faq_entries", order: "created_at.desc", normalize: normalizeFaqEntries },
   reports: { table: "report_metrics", order: "report_date.desc,created_at.desc", normalize: normalizeReports },
   rules: { table: "governance_rules", order: "created_at.desc", normalize: normalizeRules }
@@ -58,6 +57,8 @@ let syncMode = "local";
 let editingContentId = null;
 let editingSiteId = null;
 let editingVaultId = null;
+let vaultBackendReady = false;
+let vaultLastError = "";
 let mediaUploadPromise = null;
 let mediaUploadToken = 0;
 let previewObjectUrl = "";
@@ -549,15 +550,21 @@ async function uploadMediaFile(file) {
   if (!(await cloudMediaUploadEnabled())) {
     throw new Error("Upload em nuvem esta desativado. Salve o post sem subir arquivo ou use uma URL publica externa da midia.");
   }
-  const form = new FormData();
-  form.append("media_file", file);
-  updateBackendStatus("Enviando midia...", "info");
-  const result = await backendRequest("/api/upload-media", {
+  updateBackendStatus("Preparando envio...", "info");
+  const presign = await backendRequest("/api/upload-media", {
     method: "POST",
-    body: form
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size })
   });
+  updateBackendStatus("Enviando midia...", "info");
+  const putResponse = await fetch(presign.upload.signedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file
+  });
+  if (!putResponse.ok) throw new Error(`Upload direto para o Supabase falhou (${putResponse.status}).`);
   updateBackendStatus("Backend pronto", "ok");
-  return result.media.url;
+  return presign.upload.publicUrl;
 }
 
 async function cloudMediaUploadEnabled() {
@@ -1145,6 +1152,7 @@ function normalizeSupportMessages(items) {
     source: item.source || "",
     author: item.author || "",
     message: item.message || "",
+    secret_state: item.secret_state || "empty",
     category: item.category || "senha",
     risk: item.risk || "perfil_principal",
     status: item.status || "ativo",
@@ -1979,25 +1987,39 @@ function vaultLabel(value) {
   return labels[value] || value || "";
 }
 
+function vaultSecretPreview(item) {
+  const labels = {
+    "aws-kms": "Criptografado com AWS KMS. Use Revelar ou Copiar.",
+    "legacy-encrypted": "Credencial antiga fora do padrao atual. Salve novamente para regravar com AWS KMS.",
+    "legacy-plain": "Credencial antiga sem AWS KMS. Salve novamente para proteger no cofre atual.",
+    empty: "Sem segredo salvo."
+  };
+  return labels[item.secret_state] || labels.empty;
+}
+
 function renderSupport() {
   const messages = filtered(state.supportMessages);
+  const emptyMessage = vaultBackendReady
+    ? "Nenhuma credencial encontrada."
+    : `Cofre seguro ainda nao carregado. ${vaultLastError || "Configure o backend com AWS KMS e sincronize novamente."}`;
   qs("#supportList").innerHTML = messages.length ? messages.map((item) => `
     <article class="approval-row">
       <div>
         <h5>${esc(item.source || "Plataforma sem nome")} - ${esc(vaultLabel(item.category) || "Credencial")}</h5>
         <p>${esc(siteName(item.site_id))} - ${esc(item.author || "sem identificador")} - ${esc(vaultLabel(item.risk) || "uso nao definido")}</p>
-        <div class="reply-box" id="vaultSecret-${esc(item.id)}" hidden>${esc(item.message)}</div>
+        <p class="vault-secret-state muted">Cofre: ${esc(vaultSecretPreview(item))}</p>
+        <div class="reply-box" id="vaultSecret-${esc(item.id)}" hidden></div>
         ${item.suggested_reply ? `<div class="reply-box">${esc(item.suggested_reply)}</div>` : ""}
       </div>
       <div class="row-actions">
         ${statusChip(item.status)}
-        ${miniButton("toggleVaultSecret", item.id, "Revelar")}
+        ${miniButton("revealVaultSecret", item.id, "Revelar")}
         ${miniButton("copyVaultValue", item.id, "Copiar", "approve")}
         ${miniButton("editVaultCredential", item.id, "Editar")}
-        ${miniButton("deleteRecord", item.id, "Excluir", "reject", "supportMessages")}
+        ${miniButton("deleteVaultCredential", item.id, "Excluir", "reject")}
       </div>
     </article>
-  `).join("") : emptyState("Nenhuma credencial encontrada.");
+  `).join("") : emptyState(emptyMessage);
 }
 
 function renderFaq() {
@@ -2823,36 +2845,79 @@ function approvalPayload(data) {
   };
 }
 
+async function syncVaultFromBackend(showSuccess = false) {
+  if (!configuredBackendUrl()) {
+    vaultBackendReady = false;
+    vaultLastError = "Configure a URL do backend em Governanca.";
+    return false;
+  }
+  try {
+    const payload = await backendRequest("/api/vault", { method: "GET" });
+    state.supportMessages = normalizeSupportMessages(payload.items || []);
+    vaultBackendReady = true;
+    vaultLastError = "";
+    saveState();
+    if (showSuccess) toast("Cofre sincronizado pelo backend seguro.");
+    return true;
+  } catch (error) {
+    vaultBackendReady = false;
+    vaultLastError = error.message;
+    if (showSuccess) toast(`Cofre: ${error.message}`);
+    return false;
+  }
+}
+
 function vaultPayload(data) {
   return {
     site_id: requireSite(data),
     source: formString(data, "source"),
     author: formString(data, "author"),
-    message: formString(data, "message"),
+    secret: formString(data, "message"),
     category: formString(data, "category", "senha"),
     risk: formString(data, "risk", "perfil_principal"),
-    status: "ativo",
-    suggested_reply: formString(data, "suggested_reply"),
-    final_reply: ""
+    suggested_reply: formString(data, "suggested_reply")
   };
 }
 
-function toggleVaultSecret(id) {
+async function vaultSecretValue(item) {
+  if (!item) throw new Error("Credencial nao encontrada.");
+  const payload = await backendRequest("/api/vault", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "reveal", id: item.id })
+  });
+  const refreshed = normalizeSupportMessages([payload.item || item])[0];
+  state.supportMessages = state.supportMessages.map((entry) => entry.id === item.id ? refreshed : entry);
+  saveState();
+  return payload.secret || "";
+}
+
+async function revealVaultSecret(id) {
+  const item = state.supportMessages.find((entry) => entry.id === id);
+  const secret = await vaultSecretValue(item);
   const box = document.getElementById(`vaultSecret-${id}`);
   if (!box) return;
-  box.hidden = !box.hidden;
+  box.hidden = false;
+  box.textContent = secret;
+  setTimeout(() => {
+    if (document.contains(box)) {
+      box.hidden = true;
+      box.textContent = "";
+    }
+  }, 45000);
 }
 
 async function copyVaultValue(id) {
   const item = state.supportMessages.find((entry) => entry.id === id);
-  if (!item) throw new Error("Credencial nao encontrada.");
-  await navigator.clipboard.writeText(item.message || "");
+  const secret = await vaultSecretValue(item);
+  await navigator.clipboard.writeText(secret);
   toast("Credencial copiada.");
 }
 
-function editVaultCredential(id) {
+async function editVaultCredential(id) {
   const item = state.supportMessages.find((entry) => entry.id === id);
   if (!item) throw new Error("Credencial nao encontrada.");
+  const secret = await vaultSecretValue(item);
   const form = qs("#supportForm");
   editingVaultId = id;
   form.elements.site_id.value = item.site_id || "";
@@ -2860,7 +2925,7 @@ function editVaultCredential(id) {
   form.elements.author.value = item.author || "";
   form.elements.category.value = item.category || "senha";
   form.elements.risk.value = item.risk || "perfil_principal";
-  form.elements.message.value = item.message || "";
+  form.elements.message.value = secret;
   form.elements.suggested_reply.value = item.suggested_reply || "";
   const submitLabel = form.querySelector(".form-submit.primary-btn span");
   if (submitLabel) submitLabel.textContent = "Atualizar credencial";
@@ -2880,26 +2945,36 @@ function cancelVaultEdit() {
 
 async function saveVaultCredential(form) {
   const data = new FormData(form);
+  const wasEditing = Boolean(editingVaultId);
   try {
     const payload = vaultPayload(data);
-    if (editingVaultId) {
-      await updateRecord("supportMessages", editingVaultId, payload);
-      saveState();
-      cancelVaultEdit();
-      render();
-      toast("Credencial atualizada.");
-      return;
-    }
-
-    const created = await createRecord("supportMessages", payload);
-    state.supportMessages = [created, ...state.supportMessages.filter((item) => item.id !== created.id)];
+    const result = await backendRequest("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save", id: editingVaultId || undefined, ...payload })
+    });
+    const saved = normalizeSupportMessages([result.item])[0];
+    state.supportMessages = [saved, ...state.supportMessages.filter((item) => item.id !== saved.id)];
     saveState();
+    cancelVaultEdit();
     form.reset();
     render();
-    toast(syncMode === "supabase" ? "Credencial salva no Supabase." : "Credencial salva no modo local.");
+    toast(wasEditing ? "Credencial atualizada." : "Credencial salva no Cofre AWS KMS.");
   } catch (error) {
     toast(error.message);
   }
+}
+
+async function deleteVaultCredential(id) {
+  await backendRequest("/api/vault", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "delete", id })
+  });
+  state.supportMessages = state.supportMessages.filter((item) => item.id !== id);
+  saveState();
+  render();
+  toast("Credencial excluida.");
 }
 
 function faqPayload(data) {
@@ -3104,14 +3179,21 @@ document.addEventListener("click", async (event) => {
       render();
       toast("Tarefa recolocada na fila de publicacao.");
     }
-    if (action === "toggleVaultSecret") {
-      toggleVaultSecret(id);
+    if (action === "syncVault") {
+      await syncVaultFromBackend(true);
+      render();
+    }
+    if (action === "revealVaultSecret") {
+      await revealVaultSecret(id);
     }
     if (action === "copyVaultValue") {
       await copyVaultValue(id);
     }
     if (action === "editVaultCredential") {
-      editVaultCredential(id);
+      await editVaultCredential(id);
+    }
+    if (action === "deleteVaultCredential") {
+      await deleteVaultCredential(id);
     }
     if (action === "publishFaq") {
       await updateRecord("faqEntries", id, { status: "publicado" });
@@ -3354,6 +3436,7 @@ async function initDashboard() {
   applyTheme();
   render();
   syncAllFromSupabase(false);
+  syncVaultFromBackend(false).then(() => render());
 }
 
 initDashboard();
