@@ -665,7 +665,13 @@
               <h3 id="support-title">Cofre de redes e e-mails</h3>
             </div>
           </div>
-          <p class="muted">Credenciais salvas aqui ficam em texto no banco de dados. Restrinja o acesso ao Supabase (RLS) antes de guardar segredos sensiveis nesta aba.</p>
+          <div class="backend-actionbar panel">
+            <div>
+              <h4>Cofre AWS KMS</h4>
+              <p class="muted">Credenciais passam pelo backend autenticado, sao criptografadas pela AWS e ficam ilegiveis no Supabase. Nao existe senha-mestra local neste fluxo.</p>
+            </div>
+            <button class="secondary-btn" type="button" data-action="syncVault">Sincronizar Cofre</button>
+          </div>
           <form id="supportForm" class="form-grid panel" autocomplete="off">
             <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
             <label class="field">
