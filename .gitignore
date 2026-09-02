@@ -3,3 +3,7 @@ render_plano_automatizacao/
 .vercel/
 .DS_Store
 Thumbs.db
+
+# artefato de build da Lambda
+function.zip
+dist/
