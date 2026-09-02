@@ -4,9 +4,9 @@ window.KOINOPS_SUPABASE = {
 };
 
 window.KOINOPS_BACKEND = {
-  // Se publicar no Vercel, coloque aqui a URL do projeto. Ex:
-  // baseUrl: "https://seu-projeto.vercel.app"
-  baseUrl: "https://dashboard-redes-automatico.vercel.app"
+  // Backend na AWS Lambda (Function URL). Publique com:
+  // node scripts/deploy-lambda.mjs
+  baseUrl: "https://7klvpt3aodrou2ywmwvbghwkwi0dszzw.lambda-url.us-east-2.on.aws"
 };
 
 window.KOINOPS_AUTH = {
@@ -16,7 +16,7 @@ window.KOINOPS_AUTH = {
   provider: "aws-cognito",
   cognitoDomain: "https://koinops-nicolas-sandbox.auth.us-east-2.amazoncognito.com",
   clientId: "3035tmlje9mph30ngbbdl75p00",
-  redirectUri: "https://dashboard-redes-automatico.vercel.app/dashboard/",
-  logoutUri: "https://dashboard-redes-automatico.vercel.app/dashboard/",
+  redirectUri: "https://orbitustech.github.io/Dashboard-Automa-o-Codex/dashboard/",
+  logoutUri: "https://orbitustech.github.io/Dashboard-Automa-o-Codex/dashboard/",
   scopes: "openid email profile"
 };

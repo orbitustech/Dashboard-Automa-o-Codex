@@ -1,12 +1,17 @@
+# DORMENTE ate a conta AWS ter o provider OIDC do GitHub.
+#
+# Criar esse provider exige a permissao iam:CreateOpenIDConnectProvider, que
+# esta negada para o acesso atual. Enquanto isso, publique o backend com:
+#
+#   node scripts/deploy-lambda.mjs
+#
+# Quando o provider existir, crie a role de deploy (aws/deploy-trust-policy.json
+# + aws/deploy-permission-policy.json), cadastre o ARN dela como o secret
+# AWS_DEPLOY_ROLE_ARN e troque o "on:" abaixo de volta para push em main.
+
 name: Deploy Backend to AWS Lambda
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "lambda/**"
-      - "lib/**"
-      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 permissions:
