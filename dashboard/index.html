@@ -118,9 +118,6 @@
           <button class="nav-item" data-view="videos" title="Videos">
             <svg><use href="#icon-play"></use></svg><span>Videos</span>
           </button>
-          <button class="nav-item" data-view="koins" title="Coins e premios">
-            <svg><use href="#icon-coin"></use></svg><span>Coins</span>
-          </button>
           <button class="nav-item" data-view="approvals" title="Aprovacoes">
             <svg><use href="#icon-approval"></use></svg><span>Aprovacoes</span>
           </button>
@@ -193,19 +190,12 @@
           </div>
           <div id="kpiGrid" class="kpi-grid"></div>
           <div class="overview-grid">
-            <div class="panel">
+            <div class="panel" style="grid-column: 1 / -1;">
               <div class="panel-head">
                 <h4>Proximas acoes</h4>
                 <span class="muted">Prioridade operacional</span>
               </div>
               <div id="nextActions" class="action-list"></div>
-            </div>
-            <div class="panel">
-              <div class="panel-head">
-                <h4>Funil Coins</h4>
-                <span class="muted">Ultimos 7 dias</span>
-              </div>
-              <div id="funnelChart" class="bar-chart"></div>
             </div>
           </div>
         </section>
@@ -230,9 +220,7 @@
                 <option value="inativo">Inativo</option>
               </select>
             </label>
-            <label class="field"><span>Referencia do cofre</span><input name="vault_reference" required placeholder="Bitwarden: Site Admin" /></label>
             <label class="field"><span>Tipo de API</span><input name="api_type" required placeholder="REST, GraphQL, sem API..." /></label>
-            <label class="field"><span>Proxima acao</span><input name="next_action" required placeholder="Configurar auditoria inicial" /></label>
             <label class="field wide-field">
               <span>Prompt de temas (guia a geracao de posts)</span>
               <textarea name="content_prompt" placeholder="Ex: publico, tom de voz, principais temas/ofertas, o que sempre citar, o que nunca prometer, paleta de cores e CTA preferido para este site."></textarea>
@@ -590,47 +578,6 @@
           <div id="videoContentBoard" class="kanban"></div>
         </section>
 
-        <section id="koins" class="view" aria-labelledby="koins-title">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Economia interna</p>
-              <h3 id="koins-title">Coins, premios e alertas</h3>
-            </div>
-          </div>
-          <div class="split-forms">
-            <form id="koinMetricForm" class="form-grid panel" autocomplete="off">
-              <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-              <label class="field"><span>Coins emitidos</span><input name="issued" type="number" min="0" value="0" /></label>
-              <label class="field"><span>Coins resgatados</span><input name="redeemed" type="number" min="0" value="0" /></label>
-              <label class="field"><span>Resgates pendentes</span><input name="pending_redemptions" type="number" min="0" value="0" /></label>
-              <label class="field"><span>Alertas antifraude</span><input name="fraud_alerts" type="number" min="0" value="0" /></label>
-              <button class="primary-btn form-submit" type="submit">
-                <svg><use href="#icon-plus"></use></svg><span>Metrica</span>
-              </button>
-            </form>
-            <form id="prizeForm" class="form-grid panel" autocomplete="off">
-              <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-              <label class="field"><span>Premio</span><input name="name" required placeholder="Netflix R$35, iFood R$50..." /></label>
-              <label class="field"><span>Custo Coins</span><input name="cost" type="number" min="0" value="0" /></label>
-              <label class="field"><span>Estoque</span><input name="stock" type="number" min="0" value="0" /></label>
-              <label class="field"><span>Resgates</span><input name="redemptions" type="number" min="0" value="0" /></label>
-              <label class="field">
-                <span>Status</span>
-                <select name="status">
-                  <option value="ok">Ok</option>
-                  <option value="atencao">Atencao</option>
-                  <option value="critico">Critico</option>
-                </select>
-              </label>
-              <button class="primary-btn form-submit" type="submit">
-                <svg><use href="#icon-plus"></use></svg><span>Premio</span>
-              </button>
-            </form>
-          </div>
-          <div id="coinStats" class="kpi-grid"></div>
-          <div id="prizeTable" class="data-table"></div>
-        </section>
-
         <section id="approvals" class="view" aria-labelledby="approvals-title">
           <div class="section-head">
             <div>
@@ -718,15 +665,15 @@
 
           <div class="section-head compact-head">
             <div>
-              <p class="eyebrow">Base de conhecimento</p>
-              <h3>FAQ operacional</h3>
+              <p class="eyebrow">Melhoria da plataforma</p>
+              <h3>Implementacoes e ajustes</h3>
             </div>
           </div>
           <form id="faqForm" class="form-grid panel" autocomplete="off">
             <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
-            <label class="field"><span>Tema</span><input name="topic" placeholder="premios, Coins, cadastro..." /></label>
-            <label class="field wide-field"><span>Pergunta</span><textarea name="question" required placeholder="Pergunta recorrente"></textarea></label>
-            <label class="field wide-field"><span>Resposta</span><textarea name="answer" required placeholder="Resposta aprovada"></textarea></label>
+            <label class="field"><span>Categoria</span><input name="topic" placeholder="implementacao, reclamacao, ajuste..." /></label>
+            <label class="field wide-field"><span>Descricao</span><textarea name="question" required placeholder="O que precisa mudar ou o que foi encontrado"></textarea></label>
+            <label class="field wide-field"><span>Encaminhamento</span><textarea name="answer" required placeholder="Como foi ou vai ser resolvido"></textarea></label>
             <label class="field">
               <span>Status</span>
               <select name="status">

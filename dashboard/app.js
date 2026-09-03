@@ -75,7 +75,6 @@ const titles = {
   automations: "Automacoes",
   content: "Conteudo",
   videos: "Videos",
-  koins: "Coins e premios",
   approvals: "Aprovacoes",
   support: "Cofre",
   reports: "Relatorios",
@@ -1471,7 +1470,6 @@ function render() {
   renderFormSiteSelects();
   renderKpis();
   renderNextActions();
-  renderFunnel();
   renderSites();
   renderSocial();
   renderAutomationPlan();
@@ -1479,7 +1477,6 @@ function render() {
   renderContent();
   renderVideos();
   renderDistribution();
-  renderCoins();
   renderApprovals();
   renderSupport();
   renderFaq();
@@ -1533,14 +1530,13 @@ function renderKpis() {
   const sites = filtered(state.sites);
   const approvals = filtered(state.approvals).filter((item) => item.status === "pendente");
   const automations = filtered(state.automations).filter((item) => item.status === "ativa");
-  const prizeAlerts = filtered(state.prizes).filter((item) => item.status !== "ok");
   const audited = sites.filter((site) => site.last_audit).length;
   const kpis = [
     { label: "Sites ativos", value: sites.filter((site) => site.status === "ativo").length, hint: `${sites.length} cadastrados` },
     { label: "Redes ativas", value: filtered(state.socials).filter((item) => item.status === "ativo").length, hint: "perfis monitorados" },
     { label: "Automacoes", value: automations.length, hint: "ativas agora" },
     { label: "Aprovacoes", value: approvals.length, hint: "pendentes" },
-    { label: "Alertas", value: prizeAlerts.length + sites.filter((site) => site.status === "atencao").length, hint: `${audited} sites auditados` }
+    { label: "Alertas", value: sites.filter((site) => site.status === "atencao").length, hint: `${audited} sites auditados` }
   ];
   qs("#kpiGrid").innerHTML = kpis.map((item) => `
     <article class="kpi">
@@ -1589,12 +1585,7 @@ function renderNextActions() {
       detail: `${siteName(item.site_id)} - ${item.type}`,
       risk: item.risk
     }));
-  const prizeActions = filtered(state.prizes).filter((item) => item.status !== "ok").map((item) => ({
-    title: `Revisar premio: ${item.name}`,
-    detail: `${siteName(item.site_id)} - estoque ${item.stock}`,
-    risk: item.status === "critico" ? "alto" : "medio"
-  }));
-  const actions = [...approvalActions, ...supportActions, ...prizeActions, ...distributionActions, ...automationActions, ...contentActions, ...socialActions, ...siteActions].slice(0, 8);
+  const actions = [...approvalActions, ...supportActions, ...distributionActions, ...automationActions, ...contentActions, ...socialActions, ...siteActions].slice(0, 8);
   qs("#nextActions").innerHTML = actions.length ? actions.map((item) => `
     <article class="action-row">
       <div>
@@ -1604,23 +1595,6 @@ function renderNextActions() {
       ${riskChip(item.risk)}
     </article>
   `).join("") : emptyState("Nenhuma acao encontrada para o filtro atual.");
-}
-
-function currentKoinTotals() {
-  const metrics = filtered(state.koinMetrics);
-  const latestBySite = new Map();
-  metrics.forEach((metric) => {
-    const key = metric.site_id || "global";
-    const current = latestBySite.get(key);
-    if (!current || new Date(metric.measured_at) > new Date(current.measured_at)) latestBySite.set(key, metric);
-  });
-  const latest = [...latestBySite.values()];
-  return latest.reduce((total, metric) => ({
-    issued: total.issued + metric.issued,
-    redeemed: total.redeemed + metric.redeemed,
-    pendingRedemptions: total.pendingRedemptions + metric.pending_redemptions,
-    fraudAlerts: total.fraudAlerts + metric.fraud_alerts
-  }), { issued: 0, redeemed: 0, pendingRedemptions: 0, fraudAlerts: 0 });
 }
 
 function currentReportTotals() {
@@ -1660,28 +1634,10 @@ function currentReportStats() {
   };
 }
 
-function renderFunnel() {
-  const reportTotals = currentReportTotals();
-  const koins = currentKoinTotals();
-  const values = [
-    { label: "Cadastros", value: reportTotals.signups, max: Math.max(10, reportTotals.signups), color: "green" },
-    { label: "Trafego", value: reportTotals.traffic, max: Math.max(100, reportTotals.traffic), color: "" },
-    { label: "Coins", value: koins.issued, max: Math.max(100, koins.issued), color: "amber" },
-    { label: "Resgates", value: koins.pendingRedemptions, max: Math.max(20, koins.pendingRedemptions), color: "" }
-  ];
-  qs("#funnelChart").innerHTML = values.map((item) => `
-    <div class="bar-row">
-      <span>${esc(item.label)}</span>
-      <div class="bar-track"><div class="bar-fill ${item.color}" style="width:${Math.min(100, Math.round(item.value / item.max * 100))}%"></div></div>
-      <strong>${esc(item.value)}</strong>
-    </div>
-  `).join("");
-}
-
 function renderSites() {
   const sites = filtered(state.sites);
   qs("#sitesTable").innerHTML = tableMarkup(
-    ["Nome do site", "URL", "Objetivo", "Prompt de temas", "Status", "Referencia do cofre", "Tipo de API", "Ultima auditoria", "Proxima acao", "Acoes"],
+    ["Nome do site", "URL", "Objetivo", "Prompt de temas", "Status", "Tipo de API", "Ultima auditoria", "Acoes"],
     sites.map((site) => [
       esc(site.name),
       `<a href="${esc(site.url)}" target="_blank" rel="noreferrer">${esc(site.url)}</a>`,
@@ -1690,10 +1646,8 @@ function renderSites() {
         ? esc(site.content_prompt.length > 60 ? `${site.content_prompt.slice(0, 60)}...` : site.content_prompt)
         : `<span class="muted">Nao definido</span>`,
       statusChip(site.status),
-      esc(site.vault_reference),
       esc(site.api_type),
       esc(formatDate(site.last_audit)),
-      esc(site.next_action),
       rowActions([
         miniButton("editSite", site.id, "Editar"),
         miniButton("auditSite", site.id, "Auditar"),
@@ -1920,37 +1874,6 @@ function renderDistribution() {
   );
 }
 
-function renderCoins() {
-  const prizes = filtered(state.prizes);
-  const koins = currentKoinTotals();
-  const coinKpis = [
-    { label: "Coins emitidos", value: koins.issued.toLocaleString("pt-BR"), hint: "ultima metrica por site" },
-    { label: "Coins resgatados", value: koins.redeemed.toLocaleString("pt-BR"), hint: "premios pagos" },
-    { label: "Resgates pendentes", value: koins.pendingRedemptions, hint: "requerem acompanhamento" },
-    { label: "Alertas antifraude", value: koins.fraudAlerts, hint: "fila de revisao" },
-    { label: "Premios criticos", value: prizes.filter((item) => item.status === "critico").length, hint: "estoque muito baixo" }
-  ];
-  qs("#coinStats").innerHTML = coinKpis.map((item) => `
-    <article class="kpi">
-      <span>${esc(item.label)}</span>
-      <strong>${esc(item.value)}</strong>
-      <small>${esc(item.hint)}</small>
-    </article>
-  `).join("");
-  qs("#prizeTable").innerHTML = tableMarkup(
-    ["Premio", "Projeto", "Custo", "Estoque", "Resgates", "Status", "Acoes"],
-    prizes.map((item) => [
-      esc(item.name),
-      esc(siteName(item.site_id)),
-      `${item.cost.toLocaleString("pt-BR")} Coins`,
-      esc(item.stock),
-      esc(item.redemptions),
-      statusChip(item.status),
-      rowActions([miniButton("deleteRecord", item.id, "Excluir", "reject", "prizes")])
-    ])
-  );
-}
-
 function renderApprovals() {
   const approvals = filtered(state.approvals);
   qs("#approvalList").innerHTML = approvals.length ? approvals.map((item) => `
@@ -2025,7 +1948,7 @@ function renderSupport() {
 function renderFaq() {
   const entries = filtered(state.faqEntries);
   qs("#faqTable").innerHTML = tableMarkup(
-    ["Pergunta", "Site", "Tema", "Resposta", "Status", "Acoes"],
+    ["Descricao", "Site", "Categoria", "Encaminhamento", "Status", "Acoes"],
     entries.map((item) => [
       esc(item.question),
       esc(siteName(item.site_id)),
@@ -2373,9 +2296,7 @@ function editSite(siteId) {
   form.elements.url.value = site.url || "";
   form.elements.objective.value = site.objective || "";
   form.elements.status.value = site.status || "ativo";
-  form.elements.vault_reference.value = site.vault_reference || "";
   form.elements.api_type.value = site.api_type || "";
-  form.elements.next_action.value = site.next_action || "";
   form.elements.content_prompt.value = site.content_prompt || "";
   setSiteFormMode(siteId);
   form.elements.name.focus();
@@ -2388,9 +2309,7 @@ async function saveSite(form) {
     url: formString(data, "url"),
     objective: formString(data, "objective"),
     status: formString(data, "status", "ativo"),
-    vault_reference: formString(data, "vault_reference"),
     api_type: formString(data, "api_type"),
-    next_action: formString(data, "next_action"),
     content_prompt: formString(data, "content_prompt")
   };
 
@@ -2810,28 +2729,6 @@ async function markContentPublished(contentId) {
   saveState();
   render();
   toast("Conteudo marcado como publicado.");
-}
-
-function koinMetricPayload(data) {
-  return {
-    site_id: requireSite(data),
-    issued: formNumber(data, "issued"),
-    redeemed: formNumber(data, "redeemed"),
-    pending_redemptions: formNumber(data, "pending_redemptions"),
-    fraud_alerts: formNumber(data, "fraud_alerts"),
-    measured_at: new Date().toISOString()
-  };
-}
-
-function prizePayload(data) {
-  return {
-    site_id: requireSite(data),
-    name: formString(data, "name"),
-    cost: formNumber(data, "cost"),
-    stock: formNumber(data, "stock"),
-    redemptions: formNumber(data, "redemptions"),
-    status: formString(data, "status", "ok")
-  };
 }
 
 function approvalPayload(data) {
@@ -3318,16 +3215,6 @@ qs("#publishVideoNowBtn").addEventListener("click", () => {
 qs("#distributionForm").addEventListener("submit", (event) => {
   event.preventDefault();
   addCollectionRecord(event.currentTarget, "distribution", distributionPayload, "Distribuicao");
-});
-
-qs("#koinMetricForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  addCollectionRecord(event.currentTarget, "koinMetrics", koinMetricPayload, "Metrica de Coins");
-});
-
-qs("#prizeForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  addCollectionRecord(event.currentTarget, "prizes", prizePayload, "Premio");
 });
 
 qs("#approvalForm").addEventListener("submit", (event) => {
