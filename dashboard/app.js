@@ -24,7 +24,7 @@ const seedData = {
   prizes: [],
   koinMetrics: [],
   approvals: [],
-  supportMessages: [],
+  vaultCredentials: [],
   faqEntries: [],
   reports: [],
   rules: [],
@@ -164,7 +164,7 @@ function normalizeState(value) {
     prizes: normalizePrizes(value.prizes || []),
     koinMetrics: normalizeKoinMetrics(value.koinMetrics || value.koin_metrics || []),
     approvals: normalizeApprovals(value.approvals || []),
-    supportMessages: normalizeSupportMessages(value.supportMessages || value.support_messages || []),
+    vaultCredentials: normalizeVaultCredentials(value.vaultCredentials || []),
     faqEntries: normalizeFaqEntries(value.faqEntries || value.faq_entries || []),
     reports: normalizeReports(value.reports || value.report_metrics || []),
     rules: normalizeRules(value.rules || value.governance_rules || [])
@@ -1144,19 +1144,20 @@ function normalizeApprovals(items) {
   }));
 }
 
-function normalizeSupportMessages(items) {
+function normalizeVaultCredentials(items) {
   return items.map((item) => ({
     id: item.id,
-    site_id: item.site_id || item.siteId || "",
-    source: item.source || "",
-    author: item.author || "",
-    message: item.message || "",
+    label: item.label || "",
+    platform: item.platform || "",
+    login: item.login || "",
     secret_state: item.secret_state || "empty",
-    category: item.category || "senha",
-    risk: item.risk || "perfil_principal",
+    kind: item.kind || "senha",
+    usage_type: item.usage_type || "perfil_principal",
+    recovery_email: item.recovery_email || "",
+    recovery_phone: item.recovery_phone || "",
+    notes: item.notes || "",
+    site_id: item.site_id || "",
     status: item.status || "ativo",
-    suggested_reply: item.suggested_reply || "",
-    final_reply: item.final_reply || "",
     created_at: item.created_at || null,
     updated_at: item.updated_at || null
   }));
@@ -1287,7 +1288,7 @@ async function updateSite(id, patch) {
 
 async function deleteSite(id) {
   await deleteRecord("sites", id);
-  ["socials", "automations", "content", "distribution", "prizes", "koinMetrics", "approvals", "supportMessages", "faqEntries", "reports"].forEach((key) => {
+  ["socials", "automations", "content", "distribution", "prizes", "koinMetrics", "approvals", "vaultCredentials", "faqEntries", "reports"].forEach((key) => {
     state[key] = state[key].filter((item) => item.site_id !== id);
   });
 }
@@ -1501,6 +1502,16 @@ function renderSiteFilter() {
 }
 
 function renderFormSiteSelects() {
+  // Vinculo opcional (Cofre): nunca desabilita e sempre aceita ficar em branco.
+  qsa("[data-site-select-optional]").forEach((select) => {
+    const current = select.value;
+    select.innerHTML = `<option value="">Sem vinculo</option>${state.sites
+      .map((site) => `<option value="${esc(site.id)}">${esc(site.name)}</option>`)
+      .join("")}`;
+    select.disabled = false;
+    if (state.sites.some((site) => site.id === current)) select.value = current;
+  });
+
   qsa("[data-site-select]").forEach((select) => {
     const current = select.value;
     select.innerHTML = state.sites.length
@@ -1573,9 +1584,9 @@ function renderNextActions() {
     detail: `${siteName(item.site_id)} - ${item.target || "sem destino"}`,
     risk: item.status === "erro" ? "alto" : "baixo"
   }));
-  const supportActions = filtered(state.supportMessages).filter((item) => ["novo", "ativo"].includes(item.status)).map((item) => ({
-    title: `Revisar cofre: ${item.source || "conta"}`,
-    detail: `${siteName(item.site_id)} - ${item.author || item.category || "sem login"}`,
+  const supportActions = filtered(state.vaultCredentials).filter((item) => ["novo", "ativo"].includes(item.status)).map((item) => ({
+    title: `Revisar cofre: ${item.label || item.platform || "conta"}`,
+    detail: `${item.platform || "plataforma"} - ${item.login || "sem login"}`,
     risk: "baixo"
   }));
   const approvalActions = filtered(state.approvals)
@@ -1614,7 +1625,7 @@ function currentReportStats() {
   const content = filtered(state.content);
   const distribution = filtered(state.distribution);
   const approvals = filtered(state.approvals);
-  const support = filtered(state.supportMessages);
+  const support = filtered(state.vaultCredentials);
   const reports = filtered(state.reports);
   const isStatus = (item, status) => String(item.status || "").toLowerCase() === status;
   return {
@@ -1900,6 +1911,7 @@ function vaultLabel(value) {
     senha: "Senha principal",
     senha_email: "Senha de e-mail",
     codigo_2fa: "Codigo 2FA / backup",
+    chave_api: "Chave de API / token",
     recuperacao: "Recuperacao de conta",
     outro: "Outro segredo",
     perfil_principal: "Perfil principal",
@@ -1921,18 +1933,20 @@ function vaultSecretPreview(item) {
 }
 
 function renderSupport() {
-  const messages = filtered(state.supportMessages);
+  const messages = filtered(state.vaultCredentials);
   const emptyMessage = vaultBackendReady
     ? "Nenhuma credencial encontrada."
     : `Cofre seguro ainda nao carregado. ${vaultLastError || "Configure o backend com AWS KMS e sincronize novamente."}`;
   qs("#supportList").innerHTML = messages.length ? messages.map((item) => `
     <article class="approval-row">
       <div>
-        <h5>${esc(item.source || "Plataforma sem nome")} - ${esc(vaultLabel(item.category) || "Credencial")}</h5>
-        <p>${esc(siteName(item.site_id))} - ${esc(item.author || "sem identificador")} - ${esc(vaultLabel(item.risk) || "uso nao definido")}</p>
+        <h5>${esc(item.label || item.platform || "Credencial")}</h5>
+        <p>${esc(item.platform || "sem plataforma")} - ${esc(item.login || "sem identificador")} - ${esc(vaultLabel(item.kind))} - ${esc(vaultLabel(item.usage_type))}</p>
+        ${item.site_id ? `<p class="muted">Site: ${esc(siteName(item.site_id))}</p>` : ""}
+        ${item.recovery_email || item.recovery_phone ? `<p class="muted">Recuperacao: ${esc([item.recovery_email, item.recovery_phone].filter(Boolean).join(" / "))}</p>` : ""}
         <p class="vault-secret-state muted">Cofre: ${esc(vaultSecretPreview(item))}</p>
         <div class="reply-box" id="vaultSecret-${esc(item.id)}" hidden></div>
-        ${item.suggested_reply ? `<div class="reply-box">${esc(item.suggested_reply)}</div>` : ""}
+        ${item.notes ? `<div class="reply-box">${esc(item.notes)}</div>` : ""}
       </div>
       <div class="row-actions">
         ${statusChip(item.status)}
@@ -2750,7 +2764,7 @@ async function syncVaultFromBackend(showSuccess = false) {
   }
   try {
     const payload = await backendRequest("/api/vault", { method: "GET" });
-    state.supportMessages = normalizeSupportMessages(payload.items || []);
+    state.vaultCredentials = normalizeVaultCredentials(payload.items || []);
     vaultBackendReady = true;
     vaultLastError = "";
     saveState();
@@ -2766,13 +2780,16 @@ async function syncVaultFromBackend(showSuccess = false) {
 
 function vaultPayload(data) {
   return {
-    site_id: requireSite(data),
-    source: formString(data, "source"),
-    author: formString(data, "author"),
-    secret: formString(data, "message"),
-    category: formString(data, "category", "senha"),
-    risk: formString(data, "risk", "perfil_principal"),
-    suggested_reply: formString(data, "suggested_reply")
+    label: formString(data, "label"),
+    platform: formString(data, "platform"),
+    login: formString(data, "login"),
+    secret: formString(data, "secret"),
+    kind: formString(data, "kind", "senha"),
+    usage_type: formString(data, "usage_type", "perfil_principal"),
+    recovery_email: formString(data, "recovery_email"),
+    recovery_phone: formString(data, "recovery_phone"),
+    notes: formString(data, "notes"),
+    site_id: formString(data, "site_id")
   };
 }
 
@@ -2783,14 +2800,14 @@ async function vaultSecretValue(item) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "reveal", id: item.id })
   });
-  const refreshed = normalizeSupportMessages([payload.item || item])[0];
-  state.supportMessages = state.supportMessages.map((entry) => entry.id === item.id ? refreshed : entry);
+  const refreshed = normalizeVaultCredentials([payload.item || item])[0];
+  state.vaultCredentials = state.vaultCredentials.map((entry) => entry.id === item.id ? refreshed : entry);
   saveState();
   return payload.secret || "";
 }
 
 async function revealVaultSecret(id) {
-  const item = state.supportMessages.find((entry) => entry.id === id);
+  const item = state.vaultCredentials.find((entry) => entry.id === id);
   const secret = await vaultSecretValue(item);
   const box = document.getElementById(`vaultSecret-${id}`);
   if (!box) return;
@@ -2805,30 +2822,33 @@ async function revealVaultSecret(id) {
 }
 
 async function copyVaultValue(id) {
-  const item = state.supportMessages.find((entry) => entry.id === id);
+  const item = state.vaultCredentials.find((entry) => entry.id === id);
   const secret = await vaultSecretValue(item);
   await navigator.clipboard.writeText(secret);
   toast("Credencial copiada.");
 }
 
 async function editVaultCredential(id) {
-  const item = state.supportMessages.find((entry) => entry.id === id);
+  const item = state.vaultCredentials.find((entry) => entry.id === id);
   if (!item) throw new Error("Credencial nao encontrada.");
   const secret = await vaultSecretValue(item);
   const form = qs("#supportForm");
   editingVaultId = id;
+  form.elements.label.value = item.label || "";
+  form.elements.platform.value = item.platform || "";
+  form.elements.login.value = item.login || "";
+  form.elements.kind.value = item.kind || "senha";
+  form.elements.usage_type.value = item.usage_type || "perfil_principal";
   form.elements.site_id.value = item.site_id || "";
-  form.elements.source.value = item.source || "";
-  form.elements.author.value = item.author || "";
-  form.elements.category.value = item.category || "senha";
-  form.elements.risk.value = item.risk || "perfil_principal";
-  form.elements.message.value = secret;
-  form.elements.suggested_reply.value = item.suggested_reply || "";
+  form.elements.recovery_email.value = item.recovery_email || "";
+  form.elements.recovery_phone.value = item.recovery_phone || "";
+  form.elements.secret.value = secret;
+  form.elements.notes.value = item.notes || "";
   const submitLabel = form.querySelector(".form-submit.primary-btn span");
   if (submitLabel) submitLabel.textContent = "Atualizar credencial";
   qs("#cancelVaultEditBtn").hidden = false;
   switchView("support");
-  form.elements.source.focus();
+  form.elements.label.focus();
 }
 
 function cancelVaultEdit() {
@@ -2850,8 +2870,8 @@ async function saveVaultCredential(form) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "save", id: editingVaultId || undefined, ...payload })
     });
-    const saved = normalizeSupportMessages([result.item])[0];
-    state.supportMessages = [saved, ...state.supportMessages.filter((item) => item.id !== saved.id)];
+    const saved = normalizeVaultCredentials([result.item])[0];
+    state.vaultCredentials = [saved, ...state.vaultCredentials.filter((item) => item.id !== saved.id)];
     saveState();
     cancelVaultEdit();
     form.reset();
@@ -2868,7 +2888,7 @@ async function deleteVaultCredential(id) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "delete", id })
   });
-  state.supportMessages = state.supportMessages.filter((item) => item.id !== id);
+  state.vaultCredentials = state.vaultCredentials.filter((item) => item.id !== id);
   saveState();
   render();
   toast("Credencial excluida.");
