@@ -8,6 +8,24 @@ import {
 } from "../lib/aws-kms-vault.mjs";
 import { HttpError, json, readJsonBody, requestMethod, requireOperatorAuth } from "./lambda-http.mjs";
 
+const TABLE = "vault_credentials";
+const FIELDS = [
+  "id",
+  "label",
+  "platform",
+  "login",
+  "secret",
+  "kind",
+  "usage_type",
+  "recovery_email",
+  "recovery_phone",
+  "notes",
+  "site_id",
+  "status",
+  "created_at",
+  "updated_at"
+].join(",");
+
 function requireVaultConfig() {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY precisa estar no backend para operar o Cofre.");
@@ -32,19 +50,21 @@ function normalizeText(value) {
   return String(value || "").trim();
 }
 
+// O segredo nunca sai daqui: a listagem devolve apenas o estado da credencial.
 function sanitizeVaultItem(item = {}) {
   return {
     id: item.id,
+    label: item.label || "",
+    platform: item.platform || "",
+    login: item.login || "",
+    secret_state: vaultPayloadState(item.secret),
+    kind: item.kind || "senha",
+    usage_type: item.usage_type || "perfil_principal",
+    recovery_email: item.recovery_email || "",
+    recovery_phone: item.recovery_phone || "",
+    notes: item.notes || "",
     site_id: item.site_id || "",
-    source: item.source || "",
-    author: item.author || "",
-    message: "",
-    secret_state: vaultPayloadState(item.message),
-    category: item.category || "senha",
-    risk: item.risk || "perfil_principal",
     status: item.status || "ativo",
-    suggested_reply: item.suggested_reply || "",
-    final_reply: item.final_reply || "",
     created_at: item.created_at || null,
     updated_at: item.updated_at || null
   };
@@ -69,16 +89,12 @@ async function auditVault({ vaultId, action, actor, actorType, detail }) {
 }
 
 async function listVaultItems() {
-  const rows = await supabaseRest([
-    "support_messages",
-    "?select=id,site_id,source,author,message,category,risk,status,suggested_reply,final_reply,created_at,updated_at",
-    "&order=created_at.desc"
-  ].join(""));
+  const rows = await supabaseRest(`${TABLE}?select=${FIELDS}&order=created_at.desc`);
   return rows.map(sanitizeVaultItem);
 }
 
 async function fetchVaultItem(id) {
-  const rows = await supabaseRest(`support_messages?select=*&id=eq.${encodeURIComponent(id)}&limit=1`);
+  const rows = await supabaseRest(`${TABLE}?select=${FIELDS}&id=eq.${encodeURIComponent(id)}&limit=1`);
   const [item] = rows || [];
   if (!item) throw new Error("Credencial nao encontrada.");
   return item;
@@ -87,34 +103,43 @@ async function fetchVaultItem(id) {
 async function saveVaultItem(body, auth) {
   const { actor, actorType } = actorFromAuth(auth);
   const id = normalizeText(body.id);
-  const secret = normalizeText(body.secret || body.message);
+  const secret = normalizeText(body.secret);
+  const siteId = normalizeText(body.site_id);
+
   const row = {
-    site_id: normalizeText(body.site_id),
-    source: normalizeText(body.source),
-    author: normalizeText(body.author),
-    category: normalizeText(body.category) || "senha",
-    risk: normalizeText(body.risk) || "perfil_principal",
+    label: normalizeText(body.label),
+    platform: normalizeText(body.platform),
+    login: normalizeText(body.login),
+    kind: normalizeText(body.kind) || "senha",
+    usage_type: normalizeText(body.usage_type) || "perfil_principal",
+    recovery_email: normalizeText(body.recovery_email),
+    recovery_phone: normalizeText(body.recovery_phone),
+    notes: normalizeText(body.notes),
+    site_id: siteId || null,
     status: normalizeText(body.status) || "ativo",
-    suggested_reply: normalizeText(body.suggested_reply),
-    final_reply: normalizeText(body.final_reply)
+    updated_at: new Date().toISOString()
   };
 
-  if (!row.site_id) throw new Error("Escolha o site da credencial.");
-  if (!row.source) throw new Error("Informe a plataforma da credencial.");
-  if (!row.author) throw new Error("Informe o login/e-mail da credencial.");
+  if (!row.label) throw new Error("Informe um nome para a credencial.");
+  if (!row.platform) throw new Error("Informe a plataforma da credencial.");
+  if (!row.login) throw new Error("Informe o login/e-mail da credencial.");
   if (!id && !secret) throw new Error("Informe a senha ou segredo para salvar.");
 
+  // Numa edicao sem senha nova, o segredo atual e preservado.
   if (secret) {
-    row.message = await encryptVaultSecret(secret, row);
+    row.secret = await encryptVaultSecret(secret, {
+      site_id: row.site_id || "none",
+      source: row.platform
+    });
   }
 
   const rows = id
-    ? await supabaseRest(`support_messages?id=eq.${encodeURIComponent(id)}`, {
+    ? await supabaseRest(`${TABLE}?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(row)
     })
-    : await supabaseRest("support_messages", {
+    : await supabaseRest(TABLE, {
       method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(row)
@@ -127,7 +152,7 @@ async function saveVaultItem(body, auth) {
     action: id ? "update" : "create",
     actor,
     actorType,
-    detail: `${row.source} - ${row.author}`
+    detail: `${row.label} (${row.platform} - ${row.login})`
   });
 
   return sanitizeVaultItem(saved);
@@ -138,13 +163,13 @@ async function revealVaultItem(body, auth) {
   const id = normalizeText(body.id);
   if (!id) throw new Error("Informe a credencial.");
   const item = await fetchVaultItem(id);
-  const secret = await decryptVaultSecret(item.message);
+  const secret = await decryptVaultSecret(item.secret);
   await auditVault({
     vaultId: id,
     action: "reveal",
     actor,
     actorType,
-    detail: `${item.source || "plataforma"} - ${item.author || "login"}`
+    detail: `${item.label || "credencial"} (${item.platform || "plataforma"} - ${item.login || "login"})`
   });
   return { item: sanitizeVaultItem(item), secret };
 }
@@ -154,7 +179,7 @@ async function deleteVaultItem(body, auth) {
   const id = normalizeText(body.id);
   if (!id) throw new Error("Informe a credencial.");
   const item = await fetchVaultItem(id);
-  await supabaseRest(`support_messages?id=eq.${encodeURIComponent(id)}`, {
+  await supabaseRest(`${TABLE}?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Prefer: "return=minimal" }
   });
@@ -163,7 +188,7 @@ async function deleteVaultItem(body, auth) {
     action: "delete",
     actor,
     actorType,
-    detail: `${item.source || "plataforma"} - ${item.author || "login"}`
+    detail: `${item.label || "credencial"} (${item.platform || "plataforma"} - ${item.login || "login"})`
   });
   return { id };
 }

@@ -620,42 +620,51 @@
             <button class="secondary-btn" type="button" data-action="syncVault">Sincronizar Cofre</button>
           </div>
           <form id="supportForm" class="form-grid panel" autocomplete="off">
-            <label class="field"><span>Site</span><select name="site_id" data-site-select required></select></label>
+            <label class="field"><span>Nome da credencial</span><input name="label" required placeholder="Ex: Instagram Pesquisa Premios, Google Ads Orbitus" /></label>
             <label class="field">
               <span>Plataforma</span>
-              <select name="source" required>
-                <option value="Instagram">Instagram</option>
-                <option value="TikTok">TikTok</option>
-                <option value="Facebook">Facebook</option>
-                <option value="Threads">Threads</option>
-                <option value="Google/Gmail">Google/Gmail</option>
-                <option value="YouTube">YouTube</option>
-                <option value="X/Twitter">X/Twitter</option>
-                <option value="Outra rede">Outra rede</option>
-              </select>
+              <input name="platform" required list="vaultPlatformOptions" placeholder="Instagram, Google, AWS, banco..." />
+              <datalist id="vaultPlatformOptions">
+                <option value="Instagram"></option>
+                <option value="Threads"></option>
+                <option value="Facebook"></option>
+                <option value="TikTok"></option>
+                <option value="X/Twitter"></option>
+                <option value="YouTube"></option>
+                <option value="LinkedIn"></option>
+                <option value="Google/Gmail"></option>
+                <option value="Microsoft/Outlook"></option>
+                <option value="AWS"></option>
+                <option value="Supabase"></option>
+                <option value="Banco"></option>
+              </datalist>
             </label>
-            <label class="field"><span>Login / e-mail</span><input name="author" required placeholder="email, usuario ou @perfil" /></label>
+            <label class="field"><span>Login / e-mail</span><input name="login" required placeholder="email, usuario ou @perfil" /></label>
             <label class="field">
               <span>Tipo</span>
-              <select name="category">
+              <select name="kind">
                 <option value="senha">Senha principal</option>
                 <option value="senha_email">Senha de e-mail</option>
                 <option value="codigo_2fa">Codigo 2FA / backup</option>
+                <option value="chave_api">Chave de API / token</option>
                 <option value="recuperacao">Recuperacao de conta</option>
                 <option value="outro">Outro segredo</option>
               </select>
             </label>
             <label class="field">
               <span>Uso</span>
-              <select name="risk">
+              <select name="usage_type">
                 <option value="perfil_principal">Perfil principal</option>
                 <option value="perfil_teste">Perfil de teste</option>
                 <option value="email_recuperacao">E-mail de recuperacao</option>
                 <option value="admin">Admin</option>
               </select>
             </label>
-            <label class="field wide-field"><span>Senha / segredo</span><textarea name="message" required placeholder="Cole aqui a senha, codigo backup ou informacao sensivel da conta" autocomplete="new-password"></textarea></label>
-            <label class="field wide-field"><span>Observacoes</span><textarea name="suggested_reply" placeholder="Ex: URL de login, telefone de recuperacao, perfil associado, quando rotacionar"></textarea></label>
+            <label class="field"><span>Site (opcional)</span><select name="site_id" data-site-select-optional></select></label>
+            <label class="field"><span>E-mail de recuperacao</span><input name="recovery_email" type="email" placeholder="email alternativo da conta" /></label>
+            <label class="field"><span>Telefone de recuperacao</span><input name="recovery_phone" placeholder="+55 11 90000-0000" /></label>
+            <label class="field wide-field"><span>Senha / segredo</span><textarea name="secret" required placeholder="Cole aqui a senha, codigo backup ou informacao sensivel da conta" autocomplete="new-password"></textarea></label>
+            <label class="field wide-field"><span>Observacoes</span><textarea name="notes" placeholder="Ex: onde acessar, perfil associado, quando rotacionar"></textarea></label>
             <button class="primary-btn form-submit" type="submit">
               <svg><use href="#icon-plus"></use></svg><span>Salvar credencial</span>
             </button>
