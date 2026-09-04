@@ -2252,6 +2252,22 @@ function requireSite(data) {
   return siteId;
 }
 
+// Impede o envio duplicado quando o botao e clicado mais de uma vez antes da
+// resposta chegar (cada clique criava um registro novo).
+function submitOnce(form, run) {
+  if (form.dataset.submitting === "1") return;
+  form.dataset.submitting = "1";
+  const buttons = qsa("button[type='submit']", form);
+  buttons.forEach((button) => { button.disabled = true; });
+  Promise.resolve()
+    .then(run)
+    .catch((error) => toast(error.message))
+    .finally(() => {
+      delete form.dataset.submitting;
+      buttons.forEach((button) => { button.disabled = false; });
+    });
+}
+
 async function addCollectionRecord(form, collection, payloadFactory, successLabel) {
   const data = new FormData(form);
   try {
@@ -3136,29 +3152,29 @@ document.addEventListener("click", async (event) => {
 
 qs("#siteForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  saveSite(event.currentTarget);
+  submitOnce(event.currentTarget, () => saveSite(event.currentTarget));
 });
 
 qs("#cancelSiteEditBtn").addEventListener("click", resetSiteForm);
 
 qs("#socialForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "socials", socialPayload, "Rede");
+  submitOnce(event.currentTarget, () => addCollectionRecord(event.currentTarget, "socials", socialPayload, "Rede"));
 });
 
 qs("#automationForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "automations", automationPayload, "Automacao");
+  submitOnce(event.currentTarget, () => addCollectionRecord(event.currentTarget, "automations", automationPayload, "Automacao"));
 });
 
 qs("#contentForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  saveContent(event.currentTarget);
+  submitOnce(event.currentTarget, () => saveContent(event.currentTarget));
 });
 
 qs("#videoContentForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  saveContent(event.currentTarget);
+  submitOnce(event.currentTarget, () => saveContent(event.currentTarget));
 });
 
 qs("#cancelContentEditBtn").addEventListener("click", resetContentForm);
@@ -3237,34 +3253,34 @@ qs("#publishVideoNowBtn").addEventListener("click", () => {
 
 qs("#distributionForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "distribution", distributionPayload, "Distribuicao");
+  submitOnce(event.currentTarget, () => addCollectionRecord(event.currentTarget, "distribution", distributionPayload, "Distribuicao"));
 });
 
 qs("#approvalForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "approvals", approvalPayload, "Aprovacao");
+  submitOnce(event.currentTarget, () => addCollectionRecord(event.currentTarget, "approvals", approvalPayload, "Aprovacao"));
 });
 
 qs("#supportForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  saveVaultCredential(event.currentTarget);
+  submitOnce(event.currentTarget, () => saveVaultCredential(event.currentTarget));
 });
 
 qs("#cancelVaultEditBtn").addEventListener("click", cancelVaultEdit);
 
 qs("#faqForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "faqEntries", faqPayload, "FAQ");
+  submitOnce(event.currentTarget, () => addCollectionRecord(event.currentTarget, "faqEntries", faqPayload, "FAQ"));
 });
 
 qs("#reportForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "reports", reportPayload, "Relatorio");
+  submitOnce(event.currentTarget, () => addCollectionRecord(event.currentTarget, "reports", reportPayload, "Relatorio"));
 });
 
 qs("#ruleForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  addCollectionRecord(event.currentTarget, "rules", rulePayload, "Regra");
+  submitOnce(event.currentTarget, () => addCollectionRecord(event.currentTarget, "rules", rulePayload, "Regra"));
 });
 
 qs("#backendSettingsForm").addEventListener("submit", (event) => {
