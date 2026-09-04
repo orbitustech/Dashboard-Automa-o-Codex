@@ -2324,7 +2324,10 @@ async function saveSite(form) {
     objective: formString(data, "objective"),
     status: formString(data, "status", "ativo"),
     api_type: formString(data, "api_type"),
-    content_prompt: formString(data, "content_prompt")
+    content_prompt: formString(data, "content_prompt"),
+    // Colunas legadas ainda NOT NULL no banco; os campos sairam do formulario.
+    vault_reference: "",
+    next_action: ""
   };
 
   try {
