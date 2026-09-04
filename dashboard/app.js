@@ -5,7 +5,6 @@ const AUTH_SESSION_KEY = "koinops-auth-session";
 const AUTH_VERIFIER_KEY = "koinops-auth-verifier";
 const AUTH_STATE_KEY = "koinops-auth-state";
 const THEME_KEY = "orbitustech-theme";
-const supabaseConfig = window.KOINOPS_SUPABASE || {};
 const backendConfig = window.KOINOPS_BACKEND || {};
 const authDefaults = window.KOINOPS_AUTH || {};
 const DEFAULT_AUTOMATION_SLOTS = [
@@ -21,8 +20,6 @@ const seedData = {
   automations: [],
   content: [],
   distribution: [],
-  prizes: [],
-  koinMetrics: [],
   approvals: [],
   vaultCredentials: [],
   faqEntries: [],
@@ -43,8 +40,6 @@ const tableConfig = {
   automations: { table: "automations", order: "created_at.desc", normalize: normalizeAutomations },
   content: { table: "content_items", order: "created_at.desc", normalize: normalizeContent },
   distribution: { table: "distribution_tasks", order: "created_at.desc", normalize: normalizeDistribution },
-  prizes: { table: "prizes", order: "created_at.desc", normalize: normalizePrizes },
-  koinMetrics: { table: "koin_metrics", order: "measured_at.desc", normalize: normalizeKoinMetrics },
   approvals: { table: "approvals", order: "created_at.desc", normalize: normalizeApprovals },
   faqEntries: { table: "faq_entries", order: "created_at.desc", normalize: normalizeFaqEntries },
   reports: { table: "report_metrics", order: "report_date.desc,created_at.desc", normalize: normalizeReports },
@@ -161,8 +156,6 @@ function normalizeState(value) {
     automations: normalizeAutomations(value.automations || []),
     content: normalizeContent(value.content || value.content_items || []),
     distribution: normalizeDistribution(value.distribution || value.distribution_tasks || []),
-    prizes: normalizePrizes(value.prizes || []),
-    koinMetrics: normalizeKoinMetrics(value.koinMetrics || value.koin_metrics || []),
     approvals: normalizeApprovals(value.approvals || []),
     vaultCredentials: normalizeVaultCredentials(value.vaultCredentials || []),
     faqEntries: normalizeFaqEntries(value.faqEntries || value.faq_entries || []),
@@ -214,37 +207,6 @@ function toggleTheme() {
 
 function cleanAccountRef(value) {
   return String(value || "").trim().split(/\s+/)[0] || "";
-}
-
-function isSupabaseReady() {
-  return Boolean(
-    supabaseConfig.url &&
-    supabaseConfig.anonKey &&
-    !supabaseConfig.anonKey.includes("COLE_SUA")
-  );
-}
-
-function supabaseHeaders(extra = {}) {
-  return {
-    apikey: supabaseConfig.anonKey,
-    Authorization: `Bearer ${supabaseConfig.anonKey}`,
-    "Content-Type": "application/json",
-    ...extra
-  };
-}
-
-async function supabaseRequest(path, options = {}) {
-  if (!isSupabaseReady()) throw new Error("Supabase nao configurado");
-  const response = await fetch(`${supabaseConfig.url}/rest/v1/${path}`, {
-    ...options,
-    headers: supabaseHeaders(options.headers)
-  });
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || `Erro Supabase ${response.status}`);
-  }
-  if (response.status === 204) return null;
-  return response.json();
 }
 
 function configuredBackendUrl() {
@@ -1101,33 +1063,7 @@ function normalizeDistribution(items) {
   }));
 }
 
-function normalizePrizes(items) {
-  return items.map((item) => ({
-    id: item.id,
-    site_id: item.site_id || item.siteId || "",
-    name: item.name || "",
-    cost: Number(item.cost ?? 0),
-    stock: Number(item.stock ?? 0),
-    redemptions: Number(item.redemptions ?? 0),
-    status: item.status || "ok",
-    created_at: item.created_at || null,
-    updated_at: item.updated_at || null
-  }));
-}
 
-function normalizeKoinMetrics(items) {
-  return items.map((item) => ({
-    id: item.id,
-    site_id: item.site_id || item.siteId || "",
-    issued: Number(item.issued ?? 0),
-    redeemed: Number(item.redeemed ?? 0),
-    pending_redemptions: Number(item.pending_redemptions ?? item.pendingRedemptions ?? 0),
-    fraud_alerts: Number(item.fraud_alerts ?? item.fraudAlerts ?? 0),
-    measured_at: item.measured_at || item.created_at || new Date().toISOString(),
-    created_at: item.created_at || null,
-    updated_at: item.updated_at || null
-  }));
-}
 
 function normalizeApprovals(items) {
   return items.map((item) => ({
@@ -1202,59 +1138,59 @@ function normalizeRules(items) {
 }
 
 async function syncAllFromSupabase(showSuccess = true) {
-  if (!isSupabaseReady()) {
+  if (!configuredBackendUrl()) {
     syncMode = "local";
-    updateSyncStatus("Configure a chave do Supabase", "warn");
+    updateSyncStatus("Configure a URL do backend", "warn");
     return;
   }
   try {
     updateSyncStatus("Sincronizando...", "info");
-    const entries = Object.entries(tableConfig);
-    const results = await Promise.all(entries.map(async ([key, config]) => {
-      const rows = await supabaseRequest(`${config.table}?select=*&order=${config.order}`);
-      return [key, config.normalize(rows)];
-    }));
-    results.forEach(([key, rows]) => {
-      state[key] = rows;
+    const payload = await backendRequest("/api/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list" })
+    });
+    Object.entries(tableConfig).forEach(([key, config]) => {
+      state[key] = config.normalize(payload.data?.[key] || []);
     });
     saveState();
     syncMode = "supabase";
     render();
-    updateSyncStatus("Supabase conectado", "ok");
-    if (showSuccess) toast("Dados sincronizados com Supabase.");
+    updateSyncStatus("Dados sincronizados", "ok");
+    if (showSuccess) toast("Dados sincronizados pelo backend seguro.");
   } catch (error) {
     syncMode = "local";
-    updateSyncStatus("Falha no Supabase", "risk");
-    toast(`Supabase: ${error.message}`);
+    updateSyncStatus("Falha ao sincronizar", "risk");
+    toast(`Backend: ${error.message}`);
   }
 }
 
 async function createRecord(collection, payload) {
   const config = tableConfig[collection];
   if (!config) throw new Error("Colecao invalida");
-  if (!isSupabaseReady()) {
+  if (!configuredBackendUrl()) {
     const localRecord = { ...payload, id: `local-${collection}-${Date.now()}` };
     state[collection].unshift(localRecord);
     syncMode = "local";
     return localRecord;
   }
-  const [created] = await supabaseRequest(config.table, {
+  const result = await backendRequest("/api/data", {
     method: "POST",
-    headers: { Prefer: "return=representation" },
-    body: JSON.stringify(payload)
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "insert", collection, payload })
   });
   syncMode = "supabase";
-  return config.normalize([created])[0];
+  return config.normalize([result.item])[0];
 }
 
 async function updateRecord(collection, id, patch) {
   const config = tableConfig[collection];
   if (!config) throw new Error("Colecao invalida");
-  if (isSupabaseReady() && !String(id).startsWith("local-")) {
-    await supabaseRequest(`${config.table}?id=eq.${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify(patch)
+  if (configuredBackendUrl() && !String(id).startsWith("local-")) {
+    await backendRequest("/api/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "update", collection, id, patch })
     });
     syncMode = "supabase";
   } else {
@@ -1266,10 +1202,11 @@ async function updateRecord(collection, id, patch) {
 async function deleteRecord(collection, id) {
   const config = tableConfig[collection];
   if (!config) throw new Error("Colecao invalida");
-  if (isSupabaseReady() && !String(id).startsWith("local-")) {
-    await supabaseRequest(`${config.table}?id=eq.${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: { Prefer: "return=minimal" }
+  if (configuredBackendUrl() && !String(id).startsWith("local-")) {
+    await backendRequest("/api/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", collection, id })
     });
     syncMode = "supabase";
   } else {
@@ -1288,7 +1225,7 @@ async function updateSite(id, patch) {
 
 async function deleteSite(id) {
   await deleteRecord("sites", id);
-  ["socials", "automations", "content", "distribution", "prizes", "koinMetrics", "approvals", "vaultCredentials", "faqEntries", "reports"].forEach((key) => {
+  ["socials", "automations", "content", "distribution", "approvals", "vaultCredentials", "faqEntries", "reports"].forEach((key) => {
     state[key] = state[key].filter((item) => item.site_id !== id);
   });
 }

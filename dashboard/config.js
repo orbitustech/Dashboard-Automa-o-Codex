@@ -1,8 +1,3 @@
-window.KOINOPS_SUPABASE = {
-  url: "https://nbbprjduqtndkwbknyud.supabase.co",
-  anonKey: "sb_publishable_q4AiMHgZ-zx-88KMCRiNFg_OpztyQZv"
-};
-
 window.KOINOPS_BACKEND = {
   // Backend na AWS Lambda (Function URL). Publique com:
   // node scripts/deploy-lambda.mjs
