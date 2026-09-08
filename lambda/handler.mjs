@@ -15,6 +15,7 @@ import {
   requireOperatorAuth
 } from "./lambda-http.mjs";
 import { handleVault } from "./vault-route.mjs";
+import { handleData } from "./data-route.mjs";
 
 function requestedSlot(body = {}) {
   const raw = String(body.slot || body.time || body.target || "").toLowerCase();
@@ -77,6 +78,7 @@ export const handler = async (event) => {
   try {
     if (path === "" || path === "/" || path.endsWith("/api/health")) return handleHealth();
     if (path.endsWith("/api/vault")) return await handleVault(event);
+    if (path.endsWith("/api/data")) return await handleData(event);
 
     if (method !== "POST") throw new HttpError(405, "Use POST.");
     await requireOperatorAuth(event);
