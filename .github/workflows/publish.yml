@@ -36,6 +36,10 @@ jobs:
           # pendente para ela; as demais continuam publicando normalmente.
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
           INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          # Vazio usa graph.instagram.com (login do Instagram). Defina a
+          # variavel como https://graph.facebook.com para publicar pelo
+          # login do Facebook, com a conta vinculada a uma Pagina.
+          INSTAGRAM_API_HOST: ${{ vars.INSTAGRAM_API_HOST }}
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
