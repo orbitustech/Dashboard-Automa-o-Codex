@@ -1,0 +1,195 @@
+{
+  "_doc": "As 9 fontes do hub. sla_hours = atraso maximo antes da fonte aparecer como atrasada na Saude dos dados. accounts/properties com ids ficticios ate o inventario da PMKT-301; troque pelos reais.",
+  "sources": [
+    {
+      "source_id": "meta_ads",
+      "name": "Meta Ads",
+      "kind": "ads",
+      "channel_id": "meta",
+      "frequency": "Diária 06h",
+      "sla_hours": 30,
+      "reprocess_days": 7,
+      "scope": "BM Orbitus + BMs parceiros",
+      "accounts": [
+        {
+          "account_id": "act_1000000001",
+          "name": "Savvy",
+          "owner": "BM Savvy"
+        },
+        {
+          "account_id": "act_1000000002",
+          "name": "Pesquisa Prêmios",
+          "owner": "BM Pesquisa Prêmios"
+        },
+        {
+          "account_id": "act_1000000003",
+          "name": "Protege Fácil",
+          "owner": "BM Protege Fácil (outro login)"
+        }
+      ]
+    },
+    {
+      "source_id": "google_ads",
+      "name": "Google Ads",
+      "kind": "ads",
+      "channel_id": "google_ads",
+      "frequency": "Diária 06h",
+      "sla_hours": 30,
+      "reprocess_days": 7,
+      "scope": "MCC Orbitus Tech – Marketing + contas fora",
+      "login_customer_id": "1000000000",
+      "accounts": [
+        {
+          "account_id": "2000000001",
+          "name": "Savvy · FESN",
+          "owner": "MCC"
+        },
+        {
+          "account_id": "2000000002",
+          "name": "Pesquisa Prêmios",
+          "owner": "fora da MCC"
+        },
+        {
+          "account_id": "2000000003",
+          "name": "Roda Fácil",
+          "owner": "fora da MCC"
+        },
+        {
+          "account_id": "2000000004",
+          "name": "Protege Fácil",
+          "owner": "fora da MCC"
+        }
+      ]
+    },
+    {
+      "source_id": "tiktok_ads",
+      "name": "TikTok Ads",
+      "kind": "ads",
+      "channel_id": "tiktok",
+      "frequency": "Diária 06h",
+      "sla_hours": 30,
+      "reprocess_days": 7,
+      "scope": "BC Orbitus Tecnologia LTDA",
+      "accounts": [
+        {
+          "account_id": "7000000000000000001",
+          "name": "Super Pesquisa",
+          "owner": "BC"
+        },
+        {
+          "account_id": "7000000000000000002",
+          "name": "Roda Fácil",
+          "owner": "BC"
+        }
+      ]
+    },
+    {
+      "source_id": "ga4",
+      "name": "GA4",
+      "kind": "web",
+      "frequency": "Diária",
+      "sla_hours": 30,
+      "reprocess_days": 3,
+      "scope": "Uma propriedade por site",
+      "properties": [
+        {
+          "property_id": "400000001",
+          "brand_id": "savvy_fesn",
+          "site": "loja.savvy"
+        },
+        {
+          "property_id": "400000002",
+          "brand_id": "pesquisa_premios",
+          "site": "pesquisapremios"
+        },
+        {
+          "property_id": "400000003",
+          "brand_id": "roda_facil",
+          "site": "rodafacil"
+        },
+        {
+          "property_id": "400000004",
+          "brand_id": "big_pesquisa",
+          "site": "bigpesquisa"
+        },
+        {
+          "property_id": "400000005",
+          "brand_id": "protege_facil",
+          "site": "protegefacil"
+        },
+        {
+          "property_id": "400000006",
+          "brand_id": "super_pesquisa",
+          "site": "superpesquisa"
+        }
+      ],
+      "events": [
+        "begin_checkout",
+        "cotacao_iniciada"
+      ]
+    },
+    {
+      "source_id": "panel_ituran",
+      "name": "Painel Ituran · Roda Fácil",
+      "kind": "internal",
+      "frequency": "Horária",
+      "sla_hours": 2,
+      "scope": "Leads + status NPV",
+      "brands": [
+        "roda_facil"
+      ],
+      "env_base_url": "PANEL_ITURAN_URL",
+      "env_token": "PANEL_ITURAN_TOKEN"
+    },
+    {
+      "source_id": "panel_protege",
+      "name": "Painel Protege Fácil",
+      "kind": "internal",
+      "frequency": "Horária",
+      "sla_hours": 2,
+      "scope": "Leads + Multicálculo",
+      "brands": [
+        "protege_facil"
+      ],
+      "env_base_url": "PANEL_PROTEGE_URL",
+      "env_token": "PANEL_PROTEGE_TOKEN"
+    },
+    {
+      "source_id": "panel_savvy",
+      "name": "Savvy Loja + carteirinha FESN",
+      "kind": "internal",
+      "frequency": "Horária",
+      "sla_hours": 2,
+      "scope": "Pedidos e pagamentos Asaas",
+      "brands": [
+        "savvy_fesn"
+      ],
+      "env_base_url": "PANEL_SAVVY_URL",
+      "env_token": "PANEL_SAVVY_TOKEN"
+    },
+    {
+      "source_id": "panel_pesquisas",
+      "name": "Pesquisa Prêmios",
+      "kind": "internal",
+      "frequency": "Diária",
+      "sla_hours": 30,
+      "scope": "Cadastros de PP, Big e Super",
+      "brands": [
+        "pesquisa_premios",
+        "big_pesquisa",
+        "super_pesquisa"
+      ],
+      "env_base_url": "PANEL_PESQUISAS_URL",
+      "env_token": "PANEL_PESQUISAS_TOKEN"
+    },
+    {
+      "source_id": "forecast_sheet",
+      "name": "Forecast_MKT_Empresas",
+      "kind": "sheet",
+      "frequency": "Semanal · quinta",
+      "sla_hours": 192,
+      "scope": "Orçamento e metas por marca",
+      "env_csv_url": "FORECAST_SHEET_CSV_URL"
+    }
+  ]
+}

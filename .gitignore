@@ -1,9 +1,14 @@
-render_plano_automatizacao/
-~$*.docx
-.vercel/
+node_modules/
+data/
+.env
+.env.*
+!.env.example
 .DS_Store
 Thumbs.db
+~$*.docx
+*.zip
 
-# artefato de build da Lambda
-function.zip
+# app de midia (KoinOps)
+render_plano_automatizacao/
+.vercel/
 dist/

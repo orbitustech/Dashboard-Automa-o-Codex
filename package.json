@@ -1,11 +1,21 @@
 {
-  "name": "koinops-dashboard",
-  "version": "0.2.0",
+  "name": "orbitus-hub-marketing",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Hub de dados de marketing Orbitus: midia paga, GA4, paineis internos e orcamento num so mart.",
   "scripts": {
+    "mock": "node extract/run.mjs --mock",
+    "extract": "node extract/run.mjs",
+    "transform": "node transform/run.mjs",
+    "pipeline": "node extract/run.mjs --mock && node transform/run.mjs",
+    "dev": "node server/dev.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
     "publish": "node scripts/publish.mjs",
     "publish:dry": "node -e \"process.env.DRY_RUN='1'; import('./scripts/publish.mjs')\""
+  },
+  "dependencies": {
+    "@duckdb/node-api": "1.4.5-r.1"
   },
   "engines": {
     "node": ">=20"

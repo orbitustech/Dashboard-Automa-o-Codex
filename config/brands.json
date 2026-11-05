@@ -1,0 +1,119 @@
+{
+  "_doc": "Cadastro das marcas (vira mart.dim_brand). campaign_tokens = como a marca aparece no nome ORB | Marca | Objetivo | Canal. cpl_target vem do dicionario de KPIs. funnel = etapas da pagina Por marca, na ordem; source diz de onde sai a contagem.",
+  "brands": [
+    {
+      "brand_id": "savvy_fesn",
+      "brand_name": "Savvy · carteirinha FESN",
+      "short_name": "Savvy · FESN",
+      "campaign_tokens": ["Savvy", "FESN"],
+      "cpl_target": 35,
+      "goal_metric": "conversions",
+      "lead_rule": "Pedido iniciado na loja ou na carteirinha",
+      "conversion_label": "Pedidos pagos",
+      "partner": null,
+      "funnel": [
+        { "key": "clicks", "label": "Cliques nos anúncios", "source": "ads.clicks" },
+        { "key": "sessions", "label": "Visitas na loja", "source": "web.sessions" },
+        { "key": "checkout", "label": "Checkouts iniciados", "source": "web.event:begin_checkout" },
+        { "key": "lead", "label": "Pedidos criados", "source": "lead.stage:lead" },
+        { "key": "paid", "label": "Pedidos pagos", "source": "conversion" }
+      ]
+    },
+    {
+      "brand_id": "pesquisa_premios",
+      "brand_name": "Pesquisa Prêmios",
+      "short_name": "Pesquisa Prêmios",
+      "campaign_tokens": ["PesquisaPremios"],
+      "cpl_target": 18,
+      "goal_metric": "leads",
+      "lead_rule": "Cadastro com e-mail confirmado",
+      "conversion_label": "Cadastros ativos (1ª pesquisa respondida)",
+      "partner": null,
+      "funnel": [
+        { "key": "clicks", "label": "Cliques nos anúncios", "source": "ads.clicks" },
+        { "key": "sessions", "label": "Visitas na LP", "source": "web.sessions" },
+        { "key": "lead", "label": "Cadastros", "source": "lead.stage:lead" },
+        { "key": "qualified", "label": "E-mail confirmado", "source": "lead.stage:qualificado" },
+        { "key": "active", "label": "Cadastros ativos", "source": "conversion" }
+      ]
+    },
+    {
+      "brand_id": "roda_facil",
+      "brand_name": "Roda Fácil · Ituran",
+      "short_name": "Roda Fácil",
+      "campaign_tokens": ["RodaFacil", "Ituran"],
+      "cpl_target": 28,
+      "goal_metric": "leads",
+      "lead_rule": "Jornada concluída com contato e placa",
+      "conversion_label": "Vendas NPV Ituran",
+      "partner": { "fee_per_qualified_lead": 0, "commission_rate": 0 },
+      "funnel": [
+        { "key": "clicks", "label": "Cliques nos anúncios", "source": "ads.clicks" },
+        { "key": "sessions", "label": "Visitas na LP", "source": "web.sessions" },
+        { "key": "lead", "label": "Leads", "source": "lead.stage:lead" },
+        { "key": "qualified", "label": "Leads qualificados", "source": "lead.stage:qualificado" },
+        { "key": "sale", "label": "Vendas NPV", "source": "conversion" }
+      ]
+    },
+    {
+      "brand_id": "big_pesquisa",
+      "brand_name": "Big Pesquisa",
+      "short_name": "Big Pesquisa",
+      "campaign_tokens": ["BigPesquisa"],
+      "cpl_target": 26,
+      "goal_metric": "leads",
+      "lead_rule": "Cadastro com e-mail confirmado",
+      "conversion_label": "Cadastros ativos",
+      "partner": null,
+      "funnel": [
+        { "key": "clicks", "label": "Cliques nos anúncios", "source": "ads.clicks" },
+        { "key": "sessions", "label": "Visitas na LP", "source": "web.sessions" },
+        { "key": "lead", "label": "Cadastros", "source": "lead.stage:lead" },
+        { "key": "active", "label": "Cadastros ativos", "source": "conversion" }
+      ]
+    },
+    {
+      "brand_id": "protege_facil",
+      "brand_name": "Protege Fácil",
+      "short_name": "Protege Fácil",
+      "campaign_tokens": ["ProtegeFacil"],
+      "cpl_target": 30,
+      "goal_metric": "qualified_leads",
+      "lead_rule": "Nome + contato + placa + cidade",
+      "conversion_label": "Apólices fechadas",
+      "partner": { "fee_per_qualified_lead": 25, "commission_rate": 0.15 },
+      "funnel": [
+        { "key": "clicks", "label": "Cliques nos anúncios", "source": "ads.clicks" },
+        { "key": "sessions", "label": "Visitas na LP", "source": "web.sessions" },
+        { "key": "quote_start", "label": "Cotações iniciadas", "source": "web.event:cotacao_iniciada" },
+        { "key": "lead", "label": "Leads", "source": "lead.stage:lead" },
+        { "key": "qualified", "label": "Leads qualificados", "source": "lead.stage:qualificado" },
+        { "key": "multicalculo", "label": "Cotações no Multicálculo", "source": "lead.stage:multicalculo" },
+        { "key": "policy", "label": "Apólices fechadas", "source": "conversion" }
+      ]
+    },
+    {
+      "brand_id": "super_pesquisa",
+      "brand_name": "Super Pesquisa",
+      "short_name": "Super Pesquisa",
+      "campaign_tokens": ["SuperPesquisa", "SuperPesquisas"],
+      "cpl_target": 30,
+      "goal_metric": "leads",
+      "lead_rule": "Cadastro com e-mail confirmado",
+      "conversion_label": "Cadastros ativos",
+      "partner": null,
+      "funnel": [
+        { "key": "clicks", "label": "Cliques nos anúncios", "source": "ads.clicks" },
+        { "key": "sessions", "label": "Visitas na LP", "source": "web.sessions" },
+        { "key": "lead", "label": "Cadastros", "source": "lead.stage:lead" },
+        { "key": "active", "label": "Cadastros ativos", "source": "conversion" }
+      ]
+    }
+  ],
+  "channels": [
+    { "channel_id": "meta", "channel_name": "Meta Ads", "paid": true, "campaign_token": "Meta" },
+    { "channel_id": "google_ads", "channel_name": "Google Ads", "paid": true, "campaign_token": "Google" },
+    { "channel_id": "tiktok", "channel_name": "TikTok Ads", "paid": true, "campaign_token": "TikTok" },
+    { "channel_id": "organic", "channel_name": "Orgânico e direto", "paid": false, "campaign_token": null }
+  ]
+}

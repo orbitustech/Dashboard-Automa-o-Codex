@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hub de Marketing Orbitus</title>
+  <link rel="icon" href="assets/orbitus-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <img class="logo" src="assets/orbitus-logo.png" alt="Orbitus">
+      <nav aria-label="Páginas">
+        <div class="mono">Hub de marketing</div>
+        <a class="nav" href="#/visao" data-page="visao"><span class="dot"></span>Visão do grupo</a>
+        <a class="nav" href="#/canais" data-page="canais"><span class="dot"></span>Canal e campanha</a>
+        <a class="nav" href="#/marca" data-page="marca"><span class="dot"></span>Por marca</a>
+        <a class="nav" href="#/previsao" data-page="previsao"><span class="dot"></span>Previsão e pacing</a>
+        <a class="nav" href="#/saude" data-page="saude"><span class="dot"></span>Saúde dos dados</a>
+      </nav>
+      <div class="load-box" id="load-box">
+        <div class="mono">Última carga</div>
+        <div class="when">…</div>
+        <div class="sub"></div>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" type="button">Tema: automático</button>
+    </aside>
+    <main id="main" aria-live="polite"><div class="loading">Carregando…</div></main>
+  </div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
