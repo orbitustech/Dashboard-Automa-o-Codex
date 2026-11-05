@@ -250,3 +250,54 @@ details.as-table table { font-size: 13px; }
 .empty, .error-box { padding: 40px; text-align: center; color: var(--text-2); }
 .loading { color: var(--text-3); padding: 40px 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- midia */
+.side nav .mono.nav-group { padding-top: 16px; }
+.btn {
+  min-height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-strong); }
+.btn.danger { color: var(--bad); }
+.btn.small { min-height: 30px; padding: 0 10px; font-weight: 500; }
+.form-error { padding: 10px 12px; border-radius: 8px; background: var(--bad-wash); color: var(--bad); font-size: 13px; }
+
+.kanban { display: grid; grid-template-columns: repeat(4, minmax(200px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+.kcol { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; }
+.khead { display: flex; justify-content: space-between; align-items: baseline; }
+.kcard {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; width: 100%;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+  box-shadow: var(--shadow); cursor: pointer;
+}
+.kcard:hover, .kcard.on { border-color: var(--accent); }
+.kcard.on { box-shadow: 0 0 0 2px var(--accent-wash); }
+.ktitle { font-weight: 600; font-size: 14px; }
+.kmeta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+.kempty { font-size: 13px; padding: 8px 0; }
+
+.editor { display: flex; flex-direction: column; gap: 14px; }
+.form { display: flex; flex-direction: column; gap: 12px; }
+.form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2); font-weight: 500; }
+.form label.check { flex-direction: row; color: var(--text); }
+.form fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.form legend { font-size: 13px; color: var(--text-2); font-weight: 500; padding: 0 0 6px; }
+.form input:not([type="checkbox"]), .form textarea, .note-input {
+  font: inherit; font-size: 14px; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; min-height: 36px; width: 100%;
+}
+.form input:disabled, .form textarea:disabled { background: var(--surface-2); color: var(--text-2); }
+.form textarea, .note-input { resize: vertical; }
+.form.inline { flex-direction: row; flex-wrap: wrap; align-items: flex-end; }
+.form.inline label { flex: 1 1 160px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.links { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.links code { word-break: break-all; color: var(--text-2); }
+.history summary { cursor: pointer; font-size: 13px; color: var(--text-2); }
+.history ol { margin: 8px 0 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+
+@media (max-width: 640px) {
+  .kanban { grid-template-columns: repeat(4, minmax(240px, 1fr)); }
+}

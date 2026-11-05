@@ -16,7 +16,18 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; ch
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (url.pathname.startsWith("/api/")) {
-    const { status, body } = await handleApi(url.pathname, Object.fromEntries(url.searchParams));
+    let payload = null;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      try {
+        payload = chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : null;
+      } catch {
+        res.writeHead(400, { "content-type": "application/json; charset=utf-8" }).end(JSON.stringify({ error: "JSON inválido" }));
+        return;
+      }
+    }
+    const { status, body } = await handleApi(url.pathname, Object.fromEntries(url.searchParams), { method: req.method, body: payload });
     res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     res.end(JSON.stringify(body));
     return;
@@ -27,7 +38,8 @@ const server = createServer(async (req, res) => {
     res.writeHead(404).end("Nao encontrado");
     return;
   }
-  res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream" });
+  // Sem cache local: editar um .js e recarregar ja pega a versao nova.
+  res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream", "cache-control": "no-store" });
   res.end(await readFile(file));
 });
 

@@ -4,7 +4,12 @@ import { periodRange, PERIOD_KEYS } from "./periods.mjs";
 // Uma funcao por tela. Todas leem so mart/ops e devolvem numeros prontos;
 // a formatacao (R$, %, datas) fica no front. KPIs sempre a partir das somas.
 
-export class ApiInputError extends Error {}
+export class ApiInputError extends Error {
+  constructor(message, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
 
 const div = (a, b) => (b ? a / b : null);
 const change = (cur, prev) => (prev ? cur / prev - 1 : null);

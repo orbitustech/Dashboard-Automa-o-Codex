@@ -1,7 +1,9 @@
 import { columnChart, lineChart, cumulativeChart, sparkline } from "./charts.js";
+import { mediaPages } from "./media.js";
 
-// Hub de marketing: 5 telas, roteadas por hash. Cada tela busca uma rota da
-// API e monta o HTML; numeros chegam crus e sao formatados aqui.
+// Hub de marketing: metade Dados (5 telas sobre o warehouse) e metade Midia
+// (media.js), roteadas por hash. Cada tela busca uma rota da API e monta o
+// HTML; numeros chegam crus e sao formatados aqui.
 
 const API = window.HUB_API_BASE || "";
 const main = document.getElementById("main");
@@ -23,6 +25,15 @@ const state = {
 async function api(path, params = {}) {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v !== null && v !== undefined));
   const res = await fetch(`${API}/api/${path}${qs.size ? `?${qs}` : ""}`);
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  return body;
+}
+
+async function send(method, path, payload) {
+  const res = await fetch(`${API}/api/${path}`, {
+    method, headers: { "content-type": "application/json" }, body: payload === undefined ? undefined : JSON.stringify(payload)
+  });
   const body = await res.json();
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
   return body;
@@ -385,7 +396,10 @@ async function pageSaude() {
 
 // ---------------------------------------------------------------- shell
 
-const PAGES = { visao: pageVisao, canais: pageCanais, marca: pageMarca, previsao: pagePrevisao, saude: pageSaude };
+const media = mediaPages({ main, api, send, esc, head, route: () => route(), brands: () => state.brands });
+const PAGES = { visao: pageVisao, canais: pageCanais, marca: pageMarca, previsao: pagePrevisao, saude: pageSaude,
+  conteudo: media.conteudo, redes: media.redes };
+const MEDIA_PAGES = new Set(["conteudo", "redes"]);
 
 async function loadMeta() {
   state.meta = await api("meta");
@@ -401,13 +415,17 @@ async function route() {
   document.querySelectorAll(".nav").forEach((a) => a.classList.toggle("on", a.dataset.page === page));
   document.querySelectorAll(".nav").forEach((a) => a.toggleAttribute("aria-current", a.dataset.page === page));
   const ticket = ++routing;
+  const isMedia = MEDIA_PAGES.has(page);
   try {
-    if (!state.meta) await loadMeta();
+    // Midia nao depende do warehouse: abre mesmo sem pipeline rodado.
+    if (isMedia && !state.brands) state.brands = (await api("media/brands")).brands;
+    if (!isMedia && !state.meta) await loadMeta();
     if (ticket !== routing) return;
     await render();
   } catch (err) {
     if (ticket !== routing) return;
-    main.innerHTML = `<div class="card error-box"><h2>Não deu para carregar</h2><p>${esc(err.message)}</p><p class="note">Rode <code>npm run pipeline</code> e depois <code>npm run dev</code>.</p></div>`;
+    main.innerHTML = `<div class="card error-box"><h2>Não deu para carregar</h2><p>${esc(err.message)}</p>${isMedia ? ""
+      : '<p class="note">Rode <code>npm run pipeline</code> e depois <code>npm run dev</code>.</p>'}</div>`;
   }
 }
 
