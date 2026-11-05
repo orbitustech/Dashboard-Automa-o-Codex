@@ -404,8 +404,11 @@ const MEDIA_PAGES = new Set(["conteudo", "redes"]);
 async function loadMeta() {
   state.meta = await api("meta");
   const box = document.getElementById("load-box");
-  box.querySelector(".when").textContent = when(state.meta.lastLoad);
-  box.querySelector(".sub").innerHTML = `<a href="#/saude">${state.meta.sourcesOk} de ${state.meta.sourcesTotal} fontes atualizadas</a>`;
+  const allOk = state.meta.sourcesOk === state.meta.sourcesTotal;
+  box.classList.toggle("ok", allOk);
+  box.classList.toggle("warn", !allOk);
+  box.querySelector(".when").textContent = `Última carga · ${when(state.meta.lastLoad)}`;
+  box.querySelector(".sub").innerHTML = `<a href="#/saude">${state.meta.sourcesOk} de ${state.meta.sourcesTotal} fontes em dia</a>`;
 }
 
 let routing = 0;
@@ -433,10 +436,12 @@ function setupTheme() {
   const btn = document.getElementById("theme-toggle");
   const order = ["auto", "light", "dark"];
   const label = { auto: "automático", light: "claro", dark: "escuro" };
+  const icon = { auto: "i-auto", light: "i-sol", dark: "i-lua" };
   const apply = (t) => {
     if (t === "auto") delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = t;
-    btn.textContent = `Tema: ${label[t]}`;
+    btn.innerHTML = `<svg class="ico"><use href="#${icon[t]}"/></svg>`;
+    btn.title = btn.ariaLabel = `Tema: ${label[t]} (clique para trocar)`;
   };
   let theme = store.get("theme", "auto");
   apply(theme);

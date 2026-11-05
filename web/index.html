@@ -7,30 +7,48 @@
   <link rel="icon" href="assets/orbitus-logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Icones: tracos simples 24x24, cor herdada do texto. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-visao" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-canais" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-marca" viewBox="0 0 24 24"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></symbol>
+    <symbol id="i-previsao" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+    <symbol id="i-saude" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+    <symbol id="i-conteudo" viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></symbol>
+    <symbol id="i-redes" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></symbol>
+    <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-lua" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></symbol>
+  </svg>
+
   <div class="shell">
     <aside class="side">
-      <img class="logo" src="assets/orbitus-logo.png" alt="Orbitus">
+      <a class="brand" href="#/visao" aria-label="Hub de Marketing Orbitus, início">
+        <img src="assets/orbitus-logo.png" alt="" width="26" height="27">
+        <span><strong>Orbitus</strong><small>Hub de Marketing</small></span>
+      </a>
       <nav aria-label="Páginas">
-        <div class="mono">Dados</div>
-        <a class="nav" href="#/visao" data-page="visao"><span class="dot"></span>Visão do grupo</a>
-        <a class="nav" href="#/canais" data-page="canais"><span class="dot"></span>Canal e campanha</a>
-        <a class="nav" href="#/marca" data-page="marca"><span class="dot"></span>Por marca</a>
-        <a class="nav" href="#/previsao" data-page="previsao"><span class="dot"></span>Previsão e pacing</a>
-        <a class="nav" href="#/saude" data-page="saude"><span class="dot"></span>Saúde dos dados</a>
-        <div class="mono nav-group">Mídia</div>
-        <a class="nav" href="#/conteudo" data-page="conteudo"><span class="dot"></span>Conteúdo</a>
-        <a class="nav" href="#/redes" data-page="redes"><span class="dot"></span>Redes</a>
+        <div class="nav-group">Dados</div>
+        <a class="nav" href="#/visao" data-page="visao"><svg class="ico"><use href="#i-visao"/></svg>Visão do grupo</a>
+        <a class="nav" href="#/canais" data-page="canais"><svg class="ico"><use href="#i-canais"/></svg>Canal e campanha</a>
+        <a class="nav" href="#/marca" data-page="marca"><svg class="ico"><use href="#i-marca"/></svg>Por marca</a>
+        <a class="nav" href="#/previsao" data-page="previsao"><svg class="ico"><use href="#i-previsao"/></svg>Previsão e pacing</a>
+        <a class="nav" href="#/saude" data-page="saude"><svg class="ico"><use href="#i-saude"/></svg>Saúde dos dados</a>
+        <div class="nav-group">Mídia</div>
+        <a class="nav" href="#/conteudo" data-page="conteudo"><svg class="ico"><use href="#i-conteudo"/></svg>Conteúdo</a>
+        <a class="nav" href="#/redes" data-page="redes"><svg class="ico"><use href="#i-redes"/></svg>Redes</a>
       </nav>
-      <div class="load-box" id="load-box">
-        <div class="mono">Última carga</div>
-        <div class="when">…</div>
-        <div class="sub"></div>
+      <div class="side-foot">
+        <div class="load-box" id="load-box">
+          <span class="status-dot"></span>
+          <div><div class="when">Última carga …</div><div class="sub"></div></div>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" type="button"></button>
       </div>
-      <button class="theme-toggle" id="theme-toggle" type="button">Tema: automático</button>
     </aside>
     <main id="main" aria-live="polite"><div class="loading">Carregando…</div></main>
   </div>

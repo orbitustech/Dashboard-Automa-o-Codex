@@ -59,13 +59,13 @@ export function mediaPages({ main, api, send, esc, head, route, brands }) {
         <span class="pill ${item.status === "publicado" ? "good" : "muted"}">${COLUMNS[item.status].label}</span></div>
       ${last && item.status === "rascunho" ? `<div class="callout"><strong>Devolvido:</strong> ${esc(last.note)}</div>` : ""}
       <form id="content-form" class="form">
-        <label>Marca<select name="brand_id"${dis}>${brands().map((b) => `<option value="${b.brand_id}"${b.brand_id === item.brand_id ? " selected" : ""}>${esc(b.short_name)}</option>`).join("")}</select></label>
-        <label>Título interno<input name="title" value="${esc(item.title)}"${dis}></label>
+        <label class="half">Marca<select name="brand_id"${dis}>${brands().map((b) => `<option value="${b.brand_id}"${b.brand_id === item.brand_id ? " selected" : ""}>${esc(b.short_name)}</option>`).join("")}</select></label>
+        <label class="half">Título interno<input name="title" value="${esc(item.title)}"${dis}></label>
         <label>Legenda<textarea name="caption" rows="6"${dis}>${esc(item.caption)}</textarea></label>
         <fieldset><legend>Redes</legend>${Object.entries(networks).map(([k, label]) =>
           `<label class="check"><input type="checkbox" name="networks" value="${k}"${item.networks.includes(k) ? " checked" : ""}${dis}> ${esc(label)}</label>`).join("")}</fieldset>
-        <label>Link da publicação<input name="link_url" type="url" placeholder="https://" value="${esc(item.link_url)}"${dis}></label>
-        <label>Publicar em<input name="scheduled_for" type="datetime-local" value="${toLocalInput(item.scheduled_for)}"${dis}></label>
+        <label class="half">Link da publicação<input name="link_url" type="url" placeholder="https://" value="${esc(item.link_url)}"${dis}></label>
+        <label class="half">Publicar em<input name="scheduled_for" type="datetime-local" value="${toLocalInput(item.scheduled_for)}"${dis}></label>
         ${editable ? '<div class="actions"><button class="btn" type="submit">Salvar</button></div>' : ""}
       </form>
       ${Object.entries(item.links || {}).filter(([, l]) => l).length ? `<div class="links"><div class="mono muted">Links com UTM (o hub atribui os leads a este post)</div>
@@ -104,7 +104,7 @@ export function mediaPages({ main, api, send, esc, head, route, brands }) {
       ${!item ? errorBox() : ""}
       <section class="kanban">${d.statuses.map((s) => {
         const col = d.items.filter((i) => i.status === s);
-        return `<div class="kcol"><div class="khead"><strong>${COLUMNS[s].label}</strong><span class="faint">${col.length}</span></div>
+        return `<div class="kcol" data-status="${s}"><div class="khead"><span class="kdot"></span><strong>${COLUMNS[s].label}</strong><span class="kcount">${col.length}</span></div>
           <div class="note">${COLUMNS[s].hint}</div>
           ${col.map((i) => card(i, d.networks)).join("") || '<div class="kempty faint">Nada aqui</div>'}</div>`;
       }).join("")}</section>
