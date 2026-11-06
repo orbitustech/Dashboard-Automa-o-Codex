@@ -61,9 +61,43 @@ function yAxis(max, h, pad, width, fmt) {
   }).join("")}</g>`;
 }
 
-function xLabels(points, xOf, y, every) {
-  return `<g class="axis">${points.map((p, i) => (i % every === 0 || i === points.length - 1)
-    ? `<text x="${xOf(i)}" y="${y}" text-anchor="middle">${esc(p.label)}</text>` : "").join("")}</g>`;
+// Rotulos do eixo X espacados pela distancia real em pixels: o ultimo sempre
+// aparece, e qualquer outro que ficaria a menos de minGap dele (ou do anterior)
+// e pulado. Antes era "um a cada N", e o ultimo encostava no penultimo.
+export function pickXLabels(n, xOf, minGap = 48) {
+  if (!n) return [];
+  const last = n - 1;
+  const picked = [];
+  let prevX = -Infinity;
+  for (let i = 0; i < last; i++) {
+    const x = xOf(i);
+    if (x - prevX >= minGap && xOf(last) - x >= minGap) {
+      picked.push(i);
+      prevX = x;
+    }
+  }
+  picked.push(last);
+  return picked;
+}
+
+function xLabels(points, xOf, y) {
+  return `<g class="axis">${pickXLabels(points.length, xOf).map((i) =>
+    `<text x="${xOf(i)}" y="${y}" text-anchor="middle">${esc(points[i].label)}</text>`).join("")}</g>`;
+}
+
+// Rotulos no fim das linhas: ordena por altura e empurra para nao encostarem
+// (gap = altura de uma linha de texto), sem sair da area do grafico.
+export function stackLabels(items, top, bottom, gap = 16) {
+  const out = [...items].sort((a, b) => a.y - b.y).map((it) => ({ ...it }));
+  for (let k = 1; k < out.length; k++) out[k].y = Math.max(out[k].y, out[k - 1].y + gap);
+  const overflow = out.length ? out.at(-1).y - bottom : 0;
+  if (overflow > 0) out.forEach((it) => { it.y -= overflow; });
+  for (let k = out.length - 2; k >= 0; k--) out[k].y = Math.min(out[k].y, out[k + 1].y - gap);
+  if (out.length && out[0].y < top) {
+    const shift = top - out[0].y;
+    out.forEach((it) => { it.y += shift; });
+  }
+  return out;
 }
 
 // Colunas de uma serie. data: [{ label, value, tip }]
@@ -86,7 +120,7 @@ export function columnChart(container, data, { height = 150, format = compact, h
     }).join("");
     const hits = data.map((_, i) => `<rect class="hit" data-i="${i}" x="${pad.left + band * i}" y="${pad.top}" width="${band}" height="${h}"/>`).join("");
     container.innerHTML = `<svg width="${width}" height="${height}" role="img">
-      ${yAxis(max, h, pad, width, format)}${bars}${xLabels(data, xOf, height - 6, Math.ceil(data.length / 7))}${hits}</svg>`;
+      ${yAxis(max, h, pad, width, format)}${bars}${xLabels(data, xOf, height - 6)}${hits}</svg>`;
     const tip = tooltip(container);
     container.querySelectorAll(".hit").forEach((el) => {
       el.addEventListener("mouseenter", () => {
@@ -115,7 +149,7 @@ export function lineChart(container, data, { height = 150, format = compact } = 
       <path class="line" d="${d}"/>
       <circle class="dot" r="4" cx="${xOf(lastI)}" cy="${yOf(data[lastI].value)}"/>
       <text class="label strong" x="${xOf(lastI) + 8}" y="${yOf(data[lastI].value) + 4}">${esc(format(data[lastI].value))}</text>
-      ${xLabels(data, xOf, height - 6, Math.ceil(data.length / 7))}
+      ${xLabels(data, xOf, height - 6)}
       <line class="crosshair" x1="0" x2="0" y1="${pad.top}" y2="${pad.top + h}" visibility="hidden"/>
       <circle class="dot hover" r="4" visibility="hidden"/>
       <rect class="hit" x="${pad.left}" y="${pad.top}" width="${width - pad.left - pad.right}" height="${h}"/></svg>`;
@@ -154,7 +188,7 @@ function crosshair(container, n, xOf, dotsAt, html) {
 // faixa) e o ritmo do orcamento como linha de referencia cinza.
 export function cumulativeChart(container, { days, actual, projected, budget }, { height = 260, format = compact } = {}) {
   responsive(container, (width) => {
-    const pad = { top: 14, right: 92, bottom: 24, left: 56 };
+    const pad = { top: 14, right: 124, bottom: 24, left: 56 };
     const h = height - pad.top - pad.bottom;
     const max = niceMax(Math.max(budget || 0, ...projected.map((p) => p.high), ...actual.map((p) => p.value)));
     const step = (width - pad.left - pad.right) / Math.max(1, days.length - 1);
@@ -168,16 +202,21 @@ export function cumulativeChart(container, { days, actual, projected, budget }, 
     const lastA = actual.at(-1);
     const lastP = projected.at(-1);
     const labels = days.map((d) => ({ label: `${d.slice(8, 10)}/${d.slice(5, 7)}` }));
+    // Projecao e orcamento terminam no mesmo dia: os dois rotulos dividem a
+    // mesma coluna e sao empilhados para nao se sobreporem.
+    const ends = stackLabels([
+      ...(lastP ? [{ y: yOf(lastP.value) + 4, cls: "label strong", text: format(lastP.value) }] : []),
+      ...(budget ? [{ y: yOf(budget) + 4, cls: "label", text: `Orçamento ${format(budget)}` }] : [])
+    ], pad.top + 4, pad.top + h + 4);
     container.innerHTML = `<svg width="${width}" height="${height}" role="img">
       ${yAxis(max, h, pad, width, format)}
-      ${budget ? `<path class="line reference" d="M${xOf(0)},${yOf(budgetAt(0))} L${xOf(days.length - 1)},${yOf(budget)}"/>
-        <text class="label" x="${xOf(days.length - 1) + 8}" y="${yOf(budget) + 4}">Orçamento ${esc(format(budget))}</text>` : ""}
+      ${budget ? `<path class="line reference" d="M${xOf(0)},${yOf(budgetAt(0))} L${xOf(days.length - 1)},${yOf(budget)}"/>` : ""}
+      ${ends.map((l) => `<text class="${l.cls}" x="${xOf(days.length - 1) + 8}" y="${l.y}">${esc(l.text)}</text>`).join("")}
       ${bandPath ? `<path class="band" d="${bandPath}"/>` : ""}
       ${projected.length ? `<path class="line projection" d="${path(projected)}"/>` : ""}
       <path class="line" d="${path(actual)}"/>
       ${lastA ? `<circle class="dot" r="4" cx="${xOf(idx[lastA.date])}" cy="${yOf(lastA.value)}"/>` : ""}
-      ${lastP ? `<text class="label strong" x="${xOf(idx[lastP.date]) + 8}" y="${yOf(lastP.value) + (budget && Math.abs(yOf(lastP.value) - yOf(budget)) < 14 ? 16 : 4)}">${esc(format(lastP.value))}</text>` : ""}
-      ${xLabels(labels, xOf, height - 6, Math.ceil(days.length / 8))}
+      ${xLabels(labels, xOf, height - 6)}
       <line class="crosshair" x1="0" x2="0" y1="${pad.top}" y2="${pad.top + h}" visibility="hidden"/>
       <circle class="dot hover" r="4" visibility="hidden"/>
       <rect class="hit" x="${pad.left}" y="${pad.top}" width="${width - pad.left - pad.right}" height="${h}"/></svg>`;
